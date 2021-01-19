@@ -26,6 +26,9 @@
 #include <x/vision/tiled_image.h>
 #include <x/vision/tracker.h>
 
+//TODO: remove ROS dependency
+#include <dvs_msgs/EventArray.h>
+
 namespace x {
   class VIO
   {
@@ -82,6 +85,15 @@ namespace x {
                                       const std::vector<double>& match_vector,
                                       TiledImage& match_img,
                                       TiledImage& feature_img);
+      
+      /**
+       * Processes events information.
+       *
+       * @param[in] events_ptr Pointer to event array.
+       * @return The updated state, or invalid if the update could not happen.
+       */
+      // TODO: implement native C++ event array (no ROS allows in X) 
+      State processEventsMeasurement(const dvs_msgs::EventArrayConstPtr& events_ptr);
 
       /**
        * Compute cartesian coordinates of SLAM features for input state.
