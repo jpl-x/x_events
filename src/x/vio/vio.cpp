@@ -207,6 +207,15 @@ State VIO::processMatchesMeasurement(double timestamp,
   return updated_state;
 }
 
+State VIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr)
+{
+  std::cout << "Events at timestamp " << events_ptr->events.front().ts
+            << " received in xVIO class." << std::endl;
+
+  // Return invalid state for now
+  return State();
+}
+
 /** Calls the state manager to compute the cartesian coordinates of the SLAM features.
  */
 std::vector<Eigen::Vector3d>
