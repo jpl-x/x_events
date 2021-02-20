@@ -51,7 +51,7 @@ endif()
 
 find_package(catkin REQUIRED COMPONENTS
   cmake_modules
-  dvs_msgs
+  eklt
 )
 
 find_package(Eigen3 REQUIRED)

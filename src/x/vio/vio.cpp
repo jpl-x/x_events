@@ -18,6 +18,8 @@
 #include <x/vio/tools.h>
 #include <x/vision/types.h>
 
+#include <eklt/tracker.h>
+
 #include <iostream>
 
 // if Boost was compiled with BOOST_NO_EXCEPTIONS defined, it expects a user
@@ -207,10 +209,15 @@ State VIO::processMatchesMeasurement(double timestamp,
   return updated_state;
 }
 
-State VIO::processEventsMeasurement(const dvs_msgs::EventArrayConstPtr& events_ptr)
+State VIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr)
 {
-  std::cout << "Events at timestamp " << events_ptr->header.stamp
+  std::cout << "Events at timestamp " << events_ptr->events.front().ts
             << " received in xVIO class." << std::endl;
+
+  // TODO: demo only - actually integrate EKLT
+  eklt::Viewer v;
+  eklt::Tracker t(v);
+  t.processEvents(events_ptr);
 
   // Return invalid state for now
   return State();
