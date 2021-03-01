@@ -26,8 +26,7 @@
 #include <x/vision/tiled_image.h>
 #include <x/vision/tracker.h>
 
-//TODO: move this to new x_common repository
-#include <eklt/common/event_types.h>
+#include <x/common/event_types.h>
 
 
 

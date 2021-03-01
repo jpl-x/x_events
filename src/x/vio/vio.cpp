@@ -18,7 +18,7 @@
 #include <x/vio/tools.h>
 #include <x/vision/types.h>
 
-#include <eklt/tracker.h>
+#include <x/eklt/tracker.h>
 
 #include <iostream>
 
@@ -215,9 +215,9 @@ State VIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr)
             << " received in xVIO class." << std::endl;
 
   // TODO: demo only - actually integrate EKLT
-  eklt::Viewer v;
-  eklt::Tracker t(v);
-  t.processEvents(events_ptr);
+//  eklt::Viewer v;
+//  eklt::Tracker t(v);
+//  t.processEvents(events_ptr);
 
   // Return invalid state for now
   return State();

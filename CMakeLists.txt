@@ -51,7 +51,10 @@ endif()
 
 find_package(catkin REQUIRED COMPONENTS
   cmake_modules
-  eklt
+  ceres_catkin
+  eigen_catkin
+  glog_catkin
+  gflags_catkin
 )
 
 find_package(Eigen3 REQUIRED)
@@ -123,7 +126,10 @@ set (SOURCE
   src/x/vision/timing.cpp
   src/x/vision/tracker.cpp
   src/x/vision/triangulation.cpp
-
+  src/x/eklt/eklt_node.cpp
+  src/x/eklt/optimizer.cpp
+  src/x/eklt/tracker.cpp
+  src/x/eklt/viewer.cpp
 )
 
 add_library (x ${SOURCE})
