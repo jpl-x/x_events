@@ -130,6 +130,7 @@ set (SOURCE
   src/x/eklt/optimizer.cpp
   src/x/eklt/tracker.cpp
   src/x/eklt/viewer.cpp
+  src/x/eklt/eklt_vio_updater.cpp
 )
 
 add_library (x ${SOURCE})
