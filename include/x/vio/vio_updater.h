@@ -85,7 +85,7 @@ namespace x {
       Tracker tracker_;
       StateManager state_manager_;
       TrackManager track_manager_;
-      
+
       /**
        * Tracker debug image.
        */
@@ -121,7 +121,7 @@ namespace x {
        */
       int min_track_length_;
 
-      
+
       // All track members assume normalized undistorted feature coordinates.
       TrackList msckf_trks_;  // Normalized tracks for MSCKF update
       // New SLAM features initialized with semi-infinite depth uncertainty
@@ -183,7 +183,7 @@ namespace x {
                            Matrix& h,
                            Matrix& res,
                            Matrix& r);
-      
+
       /**
        * Post-update work.
        *

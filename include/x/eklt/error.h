@@ -1,6 +1,7 @@
 #pragma once
 
 #include <opencv2/core/core.hpp>
+#include <utility>
 #include <ceres/cubic_interpolation.h>
 #include <ceres/ceres.h>
 
@@ -18,7 +19,10 @@ struct CostFunctionConfig
                        cv::Point2d init_feature, 
                        const cv::Mat* event_frame, 
                        Interpolator* grad_interp)
-        :feature_(feature), event_frame_(event_frame), grad_interp_(grad_interp), init_feature_(init_feature)
+        : feature_(std::move(feature))
+        , init_feature_(std::move(init_feature))
+        , event_frame_(event_frame)
+        , grad_interp_(grad_interp)
     {
         patch_size_ = event_frame_->size[0];
         half_size_ = (event_frame_->size[0]-1)/2;
@@ -33,8 +37,8 @@ struct CostFunctionConfig
     int patch_size_;
     int half_size_;
     int size_;
-    int height_;
-    int width_;
+//    int height_{};
+//    int width_{};
 
     Interpolator* grad_interp_;
 
@@ -122,9 +126,9 @@ struct Generator
                                      Interpolator* grad_interp, 
                                      ErrorRotation* &functor)
   {
-      CostFunctionConfig* config = new CostFunctionConfig(feature, init_feature, event_frame, grad_interp);
+      auto* config = new CostFunctionConfig(std::move(feature), std::move(init_feature), event_frame, grad_interp);
       functor = new ErrorRotation(config);
-      int size = pow(event_frame->size[0], 2);
+      int size = event_frame->size[0]*event_frame->size[0];
       return new ceres::AutoDiffCostFunction<ErrorRotation, ceres::DYNAMIC, 3, 1>(functor, size);
   }
 };

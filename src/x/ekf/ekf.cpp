@@ -25,8 +25,8 @@ Ekf::Ekf(Updater& updater)
 
 Ekf::Ekf(const Ekf& ekf)
   : propagator_ { ekf.propagator_ }
-  , state_buffer_ { ekf.state_buffer_ }
   , updater_ { ekf.updater_ }
+  , state_buffer_ { ekf.state_buffer_ }
 {}
 
 Updater& Ekf::getUpdaterRef() {
@@ -52,7 +52,7 @@ void Ekf::set(const Updater& updater,
 
 void Ekf::initializeFromState(const State& init_state) {
   // Check allocated buffer size is not zero
-  if (state_buffer_.size() == 0)
+  if (state_buffer_.empty())
     throw std::runtime_error("the EKF state buffer must have non-zero size.");
 
   // Check the size of the dynamic state arrays matches between the

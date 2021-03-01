@@ -131,6 +131,7 @@ set (SOURCE
   src/x/eklt/tracker.cpp
   src/x/eklt/viewer.cpp
   src/x/eklt/eklt_vio_updater.cpp
+  src/x/eklt/eklt_vio.cpp
 )
 
 add_library (x ${SOURCE})
