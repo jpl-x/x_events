@@ -110,17 +110,6 @@ namespace x {
     SunAngleMeasurement last_angle_measurement_;
     bool initialized_{false};
 
-    /**
-     * Import a feature match list from a std::vector.
-     *
-     * @param[in] match_vector Input vector of matches.
-     * @param[in] seq Image sequence ID.
-     * @param[out] img_plot Debug image.
-     * @return The list of matches.
-     */
-    MatchList importMatches(const std::vector<double> &match_vector,
-                            unsigned int seq, x::TiledImage &img_plot) const;
-
   };
 } // namespace x
 
