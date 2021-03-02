@@ -52,7 +52,7 @@ void EkltVioUpdater::setMeasurement(const VioMeasurement &measurement) {
 void EkltVioUpdater::preProcess(const State &state) {
   // If the length of matches_ is 0, that means we used the image constructor
   // for the current object and the tracker needs to be run
-  if (measurement_.matches.size() == 0) {
+  if (measurement_.matches.empty()) {
     // Track features
     match_img_ = measurement_.image.clone();
     tracker_.track(match_img_, measurement_.timestamp, measurement_.seq);
@@ -99,10 +99,10 @@ bool EkltVioUpdater::preUpdate(State &state) {
   state_manager_.manage(state, lost_slam_trk_idxs_);
 
   // Return true if there are any visual update measurements
-  return msckf_trks_.size()
-         || slam_trks_.size()
-         || new_slam_std_trks_.size()
-         || new_msckf_slam_trks_.size();
+  return !msckf_trks_.empty()
+         || !slam_trks_.empty()
+         || !new_slam_std_trks_.empty()
+         || !new_msckf_slam_trks_.empty();
 }
 
 void EkltVioUpdater::constructUpdate(const State &state,
@@ -200,7 +200,7 @@ void EkltVioUpdater::constructUpdate(const State &state,
   Matrix h_lrf = Matrix::Zero(0, P.cols()), res_lrf = Matrix::Zero(0, 1);
   Eigen::VectorXd r_lrf_diag;
 
-  if (measurement_.range.timestamp > 0.1 && slam_trks_.size()) {
+  if (measurement_.range.timestamp > 0.1 && !slam_trks_.empty()) {
     // 2D image coordinates of the LRF impact point on the ground
     Feature lrf_img_pt;
     lrf_img_pt.setXDist(320.5);
@@ -210,7 +210,7 @@ void EkltVioUpdater::constructUpdate(const State &state,
     const std::vector<int> tr_feat_ids = track_manager_.featureTriangleAtPoint(lrf_img_pt, feature_img_);
 
     // If we found a triangular facet to construct the range update
-    if (tr_feat_ids.size()) {
+    if (!tr_feat_ids.empty()) {
       // Contruct update
       const RangeUpdate range_slam(measurement_.range,
                                    tr_feat_ids,
@@ -287,7 +287,7 @@ void EkltVioUpdater::constructUpdate(const State &state,
 void EkltVioUpdater::postUpdate(State &state, const Matrix &correction) {
   // MSCKF-SLAM feature init
   // Insert all new MSCKF-SLAM features in state and covariance
-  if (new_msckf_slam_trks_.size()) {
+  if (!new_msckf_slam_trks_.empty()) {
     // TODO(jeff) Do not initialize features which have failed the
     // Mahalanobis test. They need to be removed from the track
     // manager too.
@@ -298,7 +298,7 @@ void EkltVioUpdater::postUpdate(State &state, const Matrix &correction) {
   }
 
   // STANDARD SLAM feature initialization
-  if (new_slam_std_trks_.size()) {
+  if (!new_slam_std_trks_.empty()) {
     // Compute inverse-depth coordinates of new SLAM features
     Matrix features_slam_std;
     slam_.computeInverseDepthsNew(new_slam_std_trks_, rho_0_, features_slam_std);
