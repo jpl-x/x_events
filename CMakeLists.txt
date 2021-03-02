@@ -54,7 +54,6 @@ find_package(catkin REQUIRED COMPONENTS
   ceres_catkin
   eigen_catkin
   glog_catkin
-  gflags_catkin
 )
 
 find_package(Eigen3 REQUIRED)

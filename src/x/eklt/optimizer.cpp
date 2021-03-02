@@ -1,18 +1,13 @@
 
-#include <gflags/gflags.h>
-
 #include <x/eklt/optimizer.h>
-
-DECLARE_int32(patch_size);
-DECLARE_int32(max_num_iterations);
-DECLARE_double(log_eps);
 
 
 namespace eklt
 {
 
-Optimizer::Optimizer() :
-         patch_size_(FLAGS_patch_size)
+Optimizer::Optimizer(x::EkltParams params)
+  : params_(std::move(params))
+  , patch_size_(params_.patch_size)
 {
     prob_options.cost_function_ownership = ceres::DO_NOT_TAKE_OWNERSHIP;
     prob_options.local_parameterization_ownership = ceres::DO_NOT_TAKE_OWNERSHIP;
@@ -22,7 +17,7 @@ Optimizer::Optimizer() :
     solver_options.num_threads = 1;
     solver_options.linear_solver_type = ceres::DENSE_QR;
     solver_options.logging_type = ceres::SILENT;
-    solver_options.max_num_iterations = FLAGS_max_num_iterations;
+    solver_options.max_num_iterations = params_.max_num_iterations;
     solver_options.use_nonmonotonic_steps = true;
 
     loss_function = NULL;
@@ -52,7 +47,7 @@ void Optimizer::decrementCounter(double time)
 void Optimizer::getLogGradients(const cv::Mat& img, cv::Mat& I_x, cv::Mat& I_y)
 {
     // compute log gradients of image
-    const double& log_eps = FLAGS_log_eps;
+    const double& log_eps = params_.log_eps;
 
     cv::Mat normalized_image, log_image;
 

@@ -4,35 +4,20 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/video/tracking.hpp>
 #include <iomanip>
+#include <utility>
 
 #include <x/eklt/tracker.h>
-
-DECLARE_int32(patch_size);
-DECLARE_int32(batch_size);
-DECLARE_int32(min_distance);
-DECLARE_int32(lk_window_size);
-DECLARE_int32(num_pyramidal_layers);
-DECLARE_int32(max_corners);
-DECLARE_int32(min_corners);
-DECLARE_int32(update_every_n_events);
-DECLARE_int32(block_size);
-
-DECLARE_bool(display_features);
-
-DECLARE_string(tracks_file_txt);
-DECLARE_string(bootstrap);
-
-DECLARE_double(displacement_px);
-DECLARE_double(first_image_t);
-DECLARE_double(quality_level);
-DECLARE_double(k);
 
 
 namespace eklt
 {
 
-Tracker::Tracker(eklt::Viewer &viewer)
-    : got_first_image_(false), sensor_size_(0,0), viewer_ptr_(&viewer)
+Tracker::Tracker(eklt::Viewer &viewer, x::EkltParams params)
+    : params_(std::move(params))
+    , sensor_size_(0,0)
+    , got_first_image_(false)
+    , viewer_ptr_(&viewer)
+    , optimizer_(params_)
 {
 //    event_sub_ = nh_.subscribe("events", 10, &Tracker::processEvents, this);
 //    image_sub_ = it_.subscribe("images", 1, &Tracker::imageCallback, this);
@@ -76,7 +61,7 @@ void Tracker::initPatches(Patches& patches, std::vector<int>& lost_indices, cons
 
     // extract log image gradient patches that act as features and are used to
     // compute the adaptive batchSize as per equation 15
-    const int& p = (FLAGS_patch_size-1)/2;
+    const int& p = (params_.patch_size-1)/2;
     cv::Mat I_x, I_y, I_x_padded, I_y_padded;
     optimizer_.getLogGradients(image_it->second, I_x, I_y);
 
@@ -99,7 +84,7 @@ void Tracker::initPatches(Patches& patches, std::vector<int>& lost_indices, cons
                                                  I_y_padded.rowRange(y_min, y_min+2*p+1).colRange(x_min, x_min+2*p+1).clone());
 
             // sets adaptive batch size based on gradients according to equation (15) in the paper
-            setBatchSize(patch, patch_gradients_[i].first, patch_gradients_[i].second, FLAGS_displacement_px);
+            setBatchSize(patch, patch_gradients_[i].first, patch_gradients_[i].second, params_.displacement_px);
         }
     }
 }
@@ -107,14 +92,14 @@ void Tracker::initPatches(Patches& patches, std::vector<int>& lost_indices, cons
 void Tracker::init(const ImageBuffer::iterator& image_it)
 {
     // starts a file where feature track updates are recorded on each row (feature id, t, x, y)
-    VLOG(1) << "Will write tracks data to '" << FLAGS_tracks_file_txt << "'.";
-    if (FLAGS_tracks_file_txt != "")
+    VLOG(1) << "Will write tracks data to '" << params_.tracks_file_txt << "'.";
+    if (params_.tracks_file_txt != "")
     {
-        tracks_file_.open(FLAGS_tracks_file_txt);
+        tracks_file_.open(params_.tracks_file_txt);
     }
     
     // extracts corners and extracts patches around them.
-    initPatches(patches_, lost_indices_, FLAGS_max_corners, image_it);
+    initPatches(patches_, lost_indices_, params_.max_corners, image_it);
 
     // initializes the image gradients in x and y directions for the first image
     // and initializes the ceres cubic interpolator for use in the optimizer
@@ -122,7 +107,7 @@ void Tracker::init(const ImageBuffer::iterator& image_it)
 
     // init the data arrays that are used by the viewer
     // the time stamp drawn on the viewer is zeroed at image_it->first
-    if (FLAGS_display_features)
+    if (params_.display_features)
         viewer_ptr_->initViewData(image_it->first);
 }
 
@@ -161,11 +146,11 @@ void Tracker::processEvents()
         if (updateFirstImageBeforeTime(most_current_time_, current_image_it_)) // enter if new image found
         {
             // bootstrap patches that need to be due to new image
-            if (FLAGS_bootstrap == "klt")
+            if (params_.bootstrap == "klt")
                 bootstrapAllPossiblePatches(patches_, current_image_it_);
 
             // replenish features if there are too few
-            if (lost_indices_.size() > FLAGS_max_corners - FLAGS_min_corners)
+            if (lost_indices_.size() > params_.max_corners - params_.min_corners)
                 addFeatures(lost_indices_, current_image_it_);
 
             // erase old image
@@ -181,8 +166,8 @@ void Tracker::processEvents()
         prev_num_features_tracked = num_features_tracked;
 
         // update data for viewer
-        if (FLAGS_display_features && \
-            ++viewer_counter % FLAGS_update_every_n_events == 0)
+        if (params_.display_features && \
+            ++viewer_counter % params_.update_every_n_events == 0)
             viewer_ptr_->setViewData(patches_, most_current_time_, current_image_it_);
     }
 }
@@ -193,7 +178,7 @@ void Tracker::updatePatch(Patch& patch, const x::Event &event)
     // or the event has occurred before the most recent patch timestamp
     // or the patch has not been bootstrapped yet, do not process event
     if (patch.lost_ ||
-    (FLAGS_bootstrap == "klt" && !patch.initialized_) ||
+    (params_.bootstrap == "klt" && !patch.initialized_) ||
     !patch.contains(event.x, event.y) ||
     patch.t_curr_>event.ts)
         return;
@@ -210,7 +195,7 @@ void Tracker::updatePatch(Patch& patch, const x::Event &event)
     patch.getEventFramesAndReset(event_frame);
 
     // bootstrap using the events
-    if (!patch.initialized_ && FLAGS_bootstrap == "events")
+    if (!patch.initialized_ && params_.bootstrap == "events")
         bootstrapFeatureEvents(patch, event_frame);
 
     // update feature position and recompute the adaptive batchsize
@@ -219,7 +204,7 @@ void Tracker::updatePatch(Patch& patch, const x::Event &event)
     if (tracks_file_.is_open())
         tracks_file_ << patch.id_ << " " << patch.t_curr_ << " " << patch.center_.x << " " << patch.center_.y << std::endl;
 
-    setBatchSize(patch, patch_gradients_[&patch - &patches_[0]].first, patch_gradients_[&patch - &patches_[0]].second, FLAGS_displacement_px);
+    setBatchSize(patch, patch_gradients_[&patch - &patches_[0]].first, patch_gradients_[&patch - &patches_[0]].second, params_.displacement_px);
 
     if (!shouldDiscard(patch))
         return;
@@ -258,7 +243,7 @@ void Tracker::bootstrapAllPossiblePatches(Patches& patches, const ImageBuffer::i
         // perform bootstrapping using KLT and the first 2 frames, and compute the adaptive batch size
         // with the newly found parameters
         bootstrapFeatureKLT(patch, images_[patch.t_init_], image_it->second);
-        setBatchSize(patch, patch_gradients_[i].first, patch_gradients_[i].second, FLAGS_displacement_px);
+        setBatchSize(patch, patch_gradients_[i].first, patch_gradients_[i].second, params_.displacement_px);
     }
 }
 
@@ -266,13 +251,13 @@ void Tracker::setBatchSize(Patch& patch, const cv::Mat& I_x, const cv::Mat& I_y,
 {
     // implements the equation (15) of the paper
     cv::Mat gradient = d * std::cos(patch.flow_angle_) * I_x + d * std::sin(patch.flow_angle_) * I_y;
-    patch.batch_size_ = std::min<double>(cv::norm(gradient, cv::NORM_L1), FLAGS_batch_size);
+    patch.batch_size_ = std::min<double>(cv::norm(gradient, cv::NORM_L1), params_.batch_size);
     patch.batch_size_ = std::max<int>(5, patch.batch_size_);
 }
 
 void Tracker::resetPatches(Patches& new_patches, std::vector<int>& lost_indices, const ImageBuffer::iterator& image_it)
 {
-    const int& p = (FLAGS_patch_size-1)/2;
+    const int& p = (params_.patch_size-1)/2;
     cv::Mat I_x, I_y, I_x_padded, I_y_padded;
 
     optimizer_.getLogGradients(image_it->second, I_x, I_y);
@@ -297,7 +282,7 @@ void Tracker::resetPatches(Patches& new_patches, std::vector<int>& lost_indices,
         cv::Mat p_I_x = I_x_padded.rowRange(y_min, y_min+2*p+1).colRange(x_min, x_min+2*p+1);
         cv::Mat p_I_y = I_y_padded.rowRange(y_min, y_min+2*p+1).colRange(x_min, x_min+2*p+1);
         patch_gradients_[index] = std::make_pair(p_I_x.clone(), p_I_y.clone());
-        setBatchSize(reset_patch, patch_gradients_[index].first, patch_gradients_[index].second, FLAGS_displacement_px);
+        setBatchSize(reset_patch, patch_gradients_[index].first, patch_gradients_[index].second, params_.displacement_px);
     }
 }
 
@@ -306,7 +291,7 @@ void Tracker::extractPatches(Patches &patches, const int& num_patches, const Ima
     std::vector<cv::Point2d> features;
 
     // mask areas which are within a distance min_distance of other features or along the border.
-    int hp = (FLAGS_patch_size - 1 ) / 2;
+    int hp = (params_.patch_size - 1 ) / 2;
     int h = sensor_size_.height;
     int w = sensor_size_.width;
     cv::Mat mask = cv::Mat::ones(sensor_size_, CV_8UC1);
@@ -315,7 +300,7 @@ void Tracker::extractPatches(Patches &patches, const int& num_patches, const Ima
     mask.rowRange(0, h-1).colRange(0, hp).setTo(0);
     mask.rowRange(0, h-1).colRange(w - hp, w - 1).setTo(0);
 
-    const int& min_distance = FLAGS_min_distance;
+    const int& min_distance = params_.min_distance;
     for (Patch &patch: patches_)
     {
         if (patch.lost_) continue;
@@ -329,16 +314,16 @@ void Tracker::extractPatches(Patches &patches, const int& num_patches, const Ima
 
     // extract harris corners which are suitable
     // since they correspond to strong edges which also generate alot of events.
-    VLOG(2) << "Harris corner detector with N=" << num_patches << " quality=" << FLAGS_quality_level
-            << " min_dist=" << FLAGS_min_distance << " block_size=" << FLAGS_block_size << " k=" << FLAGS_k
+    VLOG(2) << "Harris corner detector with N=" << num_patches << " quality=" << params_.quality_level
+            << " min_dist=" << params_.min_distance << " block_size=" << params_.block_size << " k=" << params_.k
             << " image_depth=" << image_it->second.depth() << " mask_ratio=" << cv::sum(mask)[0]/(mask.cols*mask.rows);
 
     cv::goodFeaturesToTrack(image_it->second, features, num_patches,
-                            FLAGS_quality_level,
-                            FLAGS_min_distance, mask,
-                            FLAGS_block_size,
+                            params_.quality_level,
+                            params_.min_distance, mask,
+                            params_.block_size,
                             true,
-                            FLAGS_k);
+                            params_.k);
 
     // initialize patches centered at the features with an initial pixel warp
     VLOG(1) << "Extracted " << features.size() << " new features on image at t=" << std::setprecision(15) << image_it->first << " s.";
@@ -361,8 +346,8 @@ void Tracker::bootstrapFeatureKLT(Patch& patch, const cv::Mat& last_image, const
     // track feature for one frame
     std::vector<float> error;
     std::vector<uchar> status;
-    cv::Size window(FLAGS_lk_window_size, FLAGS_lk_window_size);
-    cv::calcOpticalFlowPyrLK(last_image, current_image, points, next_points, status, error, window, FLAGS_num_pyramidal_layers);
+    cv::Size window(params_.lk_window_size, params_.lk_window_size);
+    cv::calcOpticalFlowPyrLK(last_image, current_image, points, next_points, status, error, window, params_.num_pyramidal_layers);
 
     // compute optical flow angle as direction where the feature moved
     double opt_flow_angle = std::atan2(next_points[0].y - points[0].y, next_points[0].x - points[0].x);
@@ -450,8 +435,8 @@ void Tracker::processEvents(const x::EventArray::ConstPtr &msg)
 //        return;
 //    }
 //
-//    // wait for the image after FLAGS_first_image_t
-//    if (cv_ptr->header.stamp.toSec() < FLAGS_first_image_t)
+//    // wait for the image after params_.first_image_t
+//    if (cv_ptr->header.stamp.toSec() < params_.first_image_t)
 //    {
 //        return;
 //    }

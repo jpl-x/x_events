@@ -16,8 +16,8 @@ namespace eklt
 class Viewer
 {
 public:
-    Viewer();
-    ~Viewer();
+    explicit Viewer(x::EkltParams params);
+    ~Viewer() = default;
     /**
      * @brief main running thread
      */
@@ -42,6 +42,7 @@ private:
      */
 //    void publishImage(cv::Mat image, ros::Time stamp, std::string encoding, image_transport::Publisher pub);
 
+    x::EkltParams params_;
 
     FeatureTrackData feature_track_data_;
 
