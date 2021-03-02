@@ -6,6 +6,9 @@
 #pragma once
 
 #include <x/vio/types.h>
+#include <x/eklt/types.h>
+#include <x/eklt/tracker.h>
+#include <x/eklt/viewer.h>
 #include <x/eklt/eklt_vio_updater.h>
 #include <x/vio/state_manager.h>
 #include <x/vio/track_manager.h>
@@ -24,7 +27,7 @@ namespace x {
 
     bool isInitialized() const;
 
-    void setUp(const Params &params);
+    void setUp(const Params &params, const EkltParams &eklt_params);
 
     void setLastRangeMeasurement(RangeMeasurement range_measurement);
 
@@ -104,6 +107,8 @@ namespace x {
 
     Camera camera_;
     Tracker tracker_;
+    eklt::Viewer eklt_viewer_;
+    eklt::Tracker eklt_tracker_;
     TrackManager track_manager_;
     StateManager state_manager_;
     RangeMeasurement last_range_measurement_;

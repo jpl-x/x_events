@@ -17,6 +17,11 @@ namespace eklt {
     ~Optimizer();
 
     /**
+     * @brief updates the EKLT parameters
+     */
+    void setParams(const x::EkltParams &params);
+
+    /**
      * @brief Counts how many features are using the current image with timestamp time. 
      * If none are using it, free the memory.
      */

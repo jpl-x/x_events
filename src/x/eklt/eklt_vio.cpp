@@ -26,14 +26,16 @@ namespace boost {
 
 EKLTVIO::EKLTVIO()
   : ekf_{Ekf(vio_updater_)}
-  , msckf_baseline_n_(-1.0) {
+  , msckf_baseline_n_(-1.0)
+  , eklt_viewer_()
+  , eklt_tracker_(eklt_viewer_){
 }
 
 bool EKLTVIO::isInitialized() const {
   return initialized_;
 }
 
-void EKLTVIO::setUp(const x::Params &params) {
+void EKLTVIO::setUp(const x::Params &params, const x::EkltParams &eklt_params) {
   const x::Camera cam(params.cam_fx, params.cam_fy, params.cam_cx, params.cam_cy, params.cam_s, params.img_width,
                       params.img_height);
   const x::Tracker tracker(cam, params.fast_detection_delta, params.non_max_supp, params.block_half_length,
@@ -49,6 +51,9 @@ void EKLTVIO::setUp(const x::Params &params) {
   camera_ = cam;
   tracker_ = tracker;
   track_manager_ = track_manager;
+
+  // sets also EKLT params in viewer and optimizer class
+  eklt_tracker_.setParams(eklt_params);
 
   // Set up EKLTVIO state manager
   const int n_poses_state = params.n_poses_max;

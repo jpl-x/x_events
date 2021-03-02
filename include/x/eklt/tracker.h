@@ -20,9 +20,14 @@ namespace eklt {
  */
   class Tracker {
   public:
-    explicit Tracker(eklt::Viewer &viewer, x::EkltParams params);
+    explicit Tracker(eklt::Viewer &viewer, x::EkltParams params = {});
 
     /**
+     * @brief updates the EKLT parameters in the tracker as well as in the associated viewer and optimizer
+     */
+    void setParams(const x::EkltParams& params);
+
+      /**
      * @brief former ros callbacks for images and events, now made ROS free
      */
     void processEvents(const x::EventArray::ConstPtr &msg);

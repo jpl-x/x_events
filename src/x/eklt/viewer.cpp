@@ -4,8 +4,11 @@
 namespace eklt {
 
   Viewer::Viewer(x::EkltParams params)
-    : params_(std::move(params))
-    , got_first_image_(false) {
+    : params_(std::move(params)), got_first_image_(false) {
+  }
+
+  void Viewer::setParams(const x::EkltParams &params) {
+    params_ = params;
   }
 
   void Viewer::setViewData(eklt::Patches &patches, double t,
@@ -159,6 +162,5 @@ namespace eklt {
     }
 
   }
-
 
 }
