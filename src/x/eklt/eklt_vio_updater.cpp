@@ -197,7 +197,7 @@ void EkltVioUpdater::constructUpdate(const State &state,
   /* Range-SLAM */
 
   size_t rows_lrf = 0;
-  Matrix h_lrf, res_lrf;
+  Matrix h_lrf = Matrix::Zero(0, P.cols()), res_lrf = Matrix::Zero(0, 1);
   Eigen::VectorXd r_lrf_diag;
 
   if (measurement_.range.timestamp > 0.1 && slam_trks_.size()) {
@@ -234,7 +234,7 @@ void EkltVioUpdater::constructUpdate(const State &state,
   /* Sun Sensor */
 
   size_t rows_sns = 0;
-  Matrix h_sns, res_sns;
+  Matrix h_sns = Matrix::Zero(0, P.cols()), res_sns = Matrix::Zero(0, 1);
   Eigen::VectorXd r_sns_diag;
 
   if (measurement_.sun_angle.timestamp > -1) {
