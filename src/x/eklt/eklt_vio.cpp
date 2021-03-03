@@ -144,7 +144,7 @@ State EKLTVIO::processImageMeasurement(double timestamp,
     updated_state.setTime(timestamp);
 
   // Populate GUI image outputs
-
+  match_img = match_image_tracker_copy;
   feature_img = vio_updater_.getFeatureImage();
 
   return updated_state;
