@@ -74,8 +74,7 @@ void EKLTVIO::setUp(const x::Params &params, const x::EkltParams &eklt_params) {
   // Updater setup
   x::MatchList matches; // unused empty match list since it's image callback
   TiledImage img;
-  vio_updater_ = EkltVioUpdater(tracker_,
-                                state_manager_,
+  vio_updater_ = EkltVioUpdater(state_manager_,
                                 track_manager_,
                                 params_.sigma_img,
                                 params_.sigma_range,
@@ -115,12 +114,20 @@ State EKLTVIO::processImageMeasurement(double timestamp,
   // Time correction
   const double timestamp_corrected = timestamp + params_.time_offset;
 
-  // Pass measurement data to updater
-  MatchList empty_list; // TODO(jeff) get rid of image callback and process match
+  // Track features
+  auto match_image_tracker_copy = match_img.clone();
+  tracker_.track(match_image_tracker_copy, timestamp_corrected, seq);
+
+  MatchList match_list;
+
+  // If we are processing images and last image didn't go back in time
+  if (tracker_.checkMatches())
+    match_list = tracker_.getMatches();
+
   // list from a separate tracker module.
   VioMeasurement measurement(timestamp_corrected,
                              seq,
-                             empty_list,
+                             match_list,
                              match_img,
                              last_range_measurement_,
                              last_angle_measurement_);
@@ -137,7 +144,7 @@ State EKLTVIO::processImageMeasurement(double timestamp,
     updated_state.setTime(timestamp);
 
   // Populate GUI image outputs
-  match_img = vio_updater_.getMatchImage();
+
   feature_img = vio_updater_.getFeatureImage();
 
   return updated_state;

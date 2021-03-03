@@ -307,7 +307,7 @@ void Tracker::track(TiledImage& current_img,
  */
 bool Tracker::checkMatches()
 {
-  if (matches_.size())
+  if (!matches_.empty())
   {
     Match match(matches_[0]);
     if (match.previous.getTimestamp() < match.current.getTimestamp())

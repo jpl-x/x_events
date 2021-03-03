@@ -11,8 +11,7 @@
 
 using namespace x;
 
-EkltVioUpdater::EkltVioUpdater(Tracker &tracker,
-                               StateManager &state_manager,
+EkltVioUpdater::EkltVioUpdater(StateManager &state_manager,
                                TrackManager &track_manager,
                                const double sigma_img,
                                const double sigma_range,
@@ -20,17 +19,13 @@ EkltVioUpdater::EkltVioUpdater(Tracker &tracker,
                                const double sigma_rho_0,
                                const int min_track_length,
                                const int iekf_iter)
-  : tracker_(tracker), state_manager_(state_manager), track_manager_(track_manager), sigma_img_{sigma_img},
+  : state_manager_(state_manager), track_manager_(track_manager), sigma_img_{sigma_img},
     sigma_range_{sigma_range}, rho_0_{rho_0}, sigma_rho_0_{sigma_rho_0}, min_track_length_{min_track_length} {
   iekf_iter_ = iekf_iter;
 }
 
 double EkltVioUpdater::getTime() const {
   return measurement_.timestamp;
-}
-
-TiledImage &EkltVioUpdater::getMatchImage() {
-  return match_img_;
 }
 
 TiledImage &EkltVioUpdater::getFeatureImage() {
@@ -50,18 +45,6 @@ void EkltVioUpdater::setMeasurement(const VioMeasurement &measurement) {
 }
 
 void EkltVioUpdater::preProcess(const State &state) {
-  // If the length of matches_ is 0, that means we used the image constructor
-  // for the current object and the tracker needs to be run
-  if (measurement_.matches.empty()) {
-    // Track features
-    match_img_ = measurement_.image.clone();
-    tracker_.track(match_img_, measurement_.timestamp, measurement_.seq);
-
-    // If we are processing images and last image didn't go back in time
-    if (tracker_.checkMatches())
-      measurement_.matches = tracker_.getMatches();
-  }
-
   // Construct list of camera orientation states.
   // Note: pose window has not been slid yet and only goes up to
   // the previous frame. We need to crop the first pose out of the

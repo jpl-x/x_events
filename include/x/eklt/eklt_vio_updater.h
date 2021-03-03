@@ -26,11 +26,8 @@ namespace x {
     /**
      * Construct with known parameters.
      */
-    EkltVioUpdater(Tracker
-                   &tracker,
-                   StateManager &state_manager,
-                   TrackManager
-                   &track_manager,
+    EkltVioUpdater(StateManager &state_manager,
+                   TrackManager &track_manager,
                    const double sigma_img,
                    const double sigma_range,
                    const double rho_0,
@@ -45,11 +42,6 @@ namespace x {
      * Get measurement timestamp.
      */
     double getTime() const;
-
-    /**
-     * Get reference to the tracker debug image.
-     */
-    TiledImage &getMatchImage();
 
     /**
      * Get reference to the track manager debug image.
@@ -72,14 +64,8 @@ namespace x {
      */
     VioMeasurement measurement_;
 
-    Tracker tracker_;
     StateManager state_manager_;
     TrackManager track_manager_;
-
-    /**
-     * Tracker debug image.
-     */
-    TiledImage match_img_;
 
     /**
      * Track manager debug image.
