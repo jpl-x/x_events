@@ -8,7 +8,7 @@
 #include "types.h"
 
 
-namespace eklt
+namespace x
 {
 /**
  * @brief Config which contains all the arguments that are used to compute the loss.

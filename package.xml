@@ -15,6 +15,5 @@
     <!-- Copied from EKLT -->
     <build_depend>ceres_catkin</build_depend>
     <build_depend>eigen_catkin</build_depend>
-    <build_depend>glog_catkin</build_depend>
 
 </package>

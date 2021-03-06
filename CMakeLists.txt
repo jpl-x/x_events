@@ -88,7 +88,7 @@ set(EIGEN3_LIBRARIES ${EIGEN3_LIBRARIES})
 # Configure this package
 catkin_package(
 	DEPENDS EIGEN3
-  INCLUDE_DIRS include ${EIGEN3_INCLUDE_DIR}
+  INCLUDE_DIRS include ${EIGEN3_INCLUDE_DIR} ${ceres_catkin_INCLUDE_DIRS} ${glog_catkin_INCLUDE_DIRS}
   LIBRARIES x
 )
 

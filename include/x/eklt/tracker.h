@@ -1,6 +1,7 @@
 #pragma once
 
 #include <x/common/event_types.h>
+#include <x/vision/types.h>
 
 #include <deque>
 #include <mutex>
@@ -11,33 +12,28 @@
 #include "viewer.h"
 
 
-namespace eklt {
+namespace x {
 /**
- * @brief The Tracker class: uses Images to initialize corners and then tracks them using events.
+ * @brief The EkltTracker class: uses Images to initialize corners and then tracks them using events.
  * Images are subscribed to and, when collected Harris Corners are extracted. Events falling in a patch around the corners
  * forming an event-frame-patch are used as observations and tracked versus the image gradient in the patch
  * at initialization.
  */
-  class Tracker {
+  class EkltTracker {
   public:
-    explicit Tracker(eklt::Viewer &viewer, x::EkltParams params = {});
+    explicit EkltTracker(Viewer &viewer, EkltParams params = {});
 
     /**
      * @brief updates the EKLT parameters in the tracker as well as in the associated viewer and optimizer
      */
-    void setParams(const x::EkltParams& params);
+    void setParams(const EkltParams& params);
 
       /**
      * @brief former ros callbacks for images and events, now made ROS free
      */
-    void processEvents(const x::EventArray::ConstPtr &msg);
+    void processEvents(const EventArray::ConstPtr &msg);
 
-    inline void processImage(double time, const cv::Mat &image) {
-      if (sensor_size_.width <= 0)
-        sensor_size_ = cv::Size(image.elemSize1(), image.elemSize());  // TODO (Florian): check if this is width, height
-      std::unique_lock<std::mutex> images_lock(images_mutex_);
-      images_.insert(std::make_pair(time, image.clone()));
-    }
+    void processImage(double timestamp, TiledImage &current_img, unsigned int frame_number);
 
   private:
     /**
@@ -55,7 +51,7 @@ namespace eklt {
      * @brief Blocks while there are no events in buffer
      * @param next event
     */
-    inline void waitForEvent(x::Event &ev) {
+    inline void waitForEvent(Event &ev) {
 //      EDIT: make this ROS free
 //        static ros::Rate r(100);
 
@@ -122,7 +118,7 @@ namespace eklt {
     /**
      * @brief update a patch with the new event
      */
-    void updatePatch(Patch &patch, const x::Event &event);
+    void updatePatch(Patch &patch, const Event &event);
 
     /**
      * @brief reset patches that have been lost.
@@ -166,7 +162,7 @@ namespace eklt {
      * @brief Insert an event in the buffer while keeping the buffer sorted
      * This uses insertion sort as the events already come almost always sorted
      */
-    inline void insertEventInSortedBuffer(const x::Event &e) {
+    inline void insertEventInSortedBuffer(const Event &e) {
       std::unique_lock<std::mutex> lock(events_mutex_);
       events_.push_back(e);
       // insertion sort to keep the buffer sorted
@@ -180,7 +176,7 @@ namespace eklt {
       events_[j + 1] = e;
     }
 
-    x::EkltParams params_;
+    EkltParams params_;
 
     cv::Size sensor_size_;
 
@@ -207,8 +203,8 @@ namespace eklt {
     std::vector<int> lost_indices_;
 
     // delegation
-    eklt::Viewer *viewer_ptr_ = NULL;
-    eklt::Optimizer optimizer_;
+    Viewer *viewer_ptr_ = NULL;
+    Optimizer optimizer_;
 
     // mutex
     std::mutex events_mutex_;

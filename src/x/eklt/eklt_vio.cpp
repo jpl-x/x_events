@@ -156,8 +156,8 @@ State EKLTVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_pt
             << " received in xEKLTVIO class." << std::endl;
 
   // TODO: demo only - actually integrate EKLT
-//  eklt::Viewer v;
-//  eklt::Tracker t(v);
+//  x::Viewer v;
+//  x::EkltTracker t(v);
 //  t.processEvents(events_ptr);
 
   // Return invalid state for now

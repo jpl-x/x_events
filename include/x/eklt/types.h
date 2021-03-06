@@ -46,7 +46,7 @@ namespace x {
 }
 
 
-namespace eklt {
+namespace x {
 
   struct Patch; //forward decl
   using Patches = std::vector<Patch>; //forward decl
@@ -55,7 +55,7 @@ namespace eklt {
   using ImageBuffer = std::map<double, cv::Mat>;
 
   struct FeatureTrackData {
-    eklt::Patches patches;
+    Patches patches;
     double t, t_init;
     cv::Mat image;
   };
@@ -70,8 +70,8 @@ namespace eklt {
 
     OptimizerDatum(const std::vector<double> &grad, const cv::Mat &img, int num_patches) {
       grad_ = grad;
-      grad_grid_ = new eklt::Grid(grad_.data(), 0, img.rows, 0, img.cols);
-      grad_interp_ = new eklt::Interpolator(*grad_grid_);
+      grad_grid_ = new Grid(grad_.data(), 0, img.rows, 0, img.cols);
+      grad_interp_ = new Interpolator(*grad_grid_);
       ref_counter_ = num_patches;
     }
 
@@ -81,8 +81,8 @@ namespace eklt {
     }
 
     std::vector<double> grad_;
-    eklt::Grid *grad_grid_;
-    eklt::Interpolator *grad_interp_;
+    Grid *grad_grid_;
+    Interpolator *grad_interp_;
     int ref_counter_;
   };
 

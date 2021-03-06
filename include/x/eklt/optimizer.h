@@ -5,21 +5,20 @@
 #include "types.h"
 
 
-namespace eklt {
+namespace x {
 
-  struct Optimizer
-/**
- * @brief The Optimizer performs optimization to find the best warp and optical flow for each patch.
- */
-  {
-    Optimizer(x::EkltParams params);
+  /**
+   * @brief The Optimizer performs optimization to find the best warp and optical flow for each patch.
+   */
+  struct Optimizer {
+    explicit Optimizer(EkltParams params);
 
     ~Optimizer();
 
     /**
      * @brief updates the EKLT parameters
      */
-    void setParams(const x::EkltParams &params);
+    void setParams(const EkltParams &params);
 
     /**
      * @brief Counts how many features are using the current image with timestamp time. 
@@ -32,14 +31,14 @@ namespace eklt {
      */
     void getLogGradients(const cv::Mat &img, cv::Mat &I_x, cv::Mat &I_y);
 
-    void precomputeLogImageArray(const eklt::Patches &patches, const eklt::ImageBuffer::iterator &image_it);
+    void precomputeLogImageArray(const Patches &patches, const ImageBuffer::iterator &image_it);
 
     /**
      * @brief perform optimization of cost function (7) in the original paper.
      */
-    void optimizeParameters(const cv::Mat &event_frame, eklt::Patch &patch);
+    void optimizeParameters(const cv::Mat &event_frame, Patch &patch);
 
-    x::EkltParams params_;
+    EkltParams params_;
 
     ceres::Problem::Options prob_options;
     ceres::Solver::Options solver_options;

@@ -107,8 +107,8 @@ namespace x {
 
     Camera camera_;
     Tracker tracker_;
-    eklt::Viewer eklt_viewer_;
-    eklt::Tracker eklt_tracker_;
+    Viewer eklt_viewer_;
+    EkltTracker eklt_tracker_;
     TrackManager track_manager_;
     StateManager state_manager_;
     RangeMeasurement last_range_measurement_;

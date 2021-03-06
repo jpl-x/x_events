@@ -8,20 +8,20 @@
 #include "types.h"
 
 
-namespace eklt {
+namespace x {
 /**
  * @brief viewer object that displays the feature tracks as they are computed.
  */
   class Viewer {
   public:
-    explicit Viewer(x::EkltParams params = {});
+    explicit Viewer(EkltParams params = {});
 
     ~Viewer() = default;
 
     /**
      * @brief updates the EKLT parameters
      */
-    void setParams(const x::EkltParams &params);
+    void setParams(const EkltParams &params);
 
     /**
      * @brief main running thread
@@ -36,8 +36,8 @@ namespace eklt {
     /**
      * @brief Used to set the tracking data
      */
-    void setViewData(eklt::Patches &patches, double t,
-                     eklt::ImageBuffer::iterator image_it);
+    void setViewData(Patches &patches, double t,
+                     ImageBuffer::iterator image_it);
 
   private:
     /**
@@ -50,7 +50,7 @@ namespace eklt {
      */
 //    void publishImage(cv::Mat image, ros::Time stamp, std::string encoding, image_transport::Publisher pub);
 
-    x::EkltParams params_;
+    EkltParams params_;
 
     FeatureTrackData feature_track_data_;
 

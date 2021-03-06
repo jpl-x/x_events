@@ -5,18 +5,14 @@
 #include <deque>
 
 #include <opencv2/core.hpp>
-#include <gflags/gflags.h>
 #include <opencv2/imgproc/imgproc.hpp>
 
-#include "error.h"
-#include "types.h"
-
-DECLARE_int32(patch_size);
-DECLARE_int32(batch_size);
-DECLARE_int32(update_every_n_events);
+#include <x/eklt/error.h>
+#include <x/eklt/types.h>
 
 
-namespace eklt
+
+namespace x
 {
 
 /**
@@ -34,21 +30,22 @@ struct Patch
    * @param half_size half size of the patch side length
    * @param t_init time stamp of the image where the corner was extracted
    */
-    Patch(cv::Point2d center, double t_init):
+    Patch(cv::Point2d center, double t_init, const x::EkltParams& params):
         init_center_(center), flow_angle_(0), t_init_(t_init), t_curr_(t_init), event_counter_(0), color_(0, 0, 255),
         lost_(false), initialized_(false), tracking_quality_(1)
     {
         warping_ = cv::Mat::eye(3,3,CV_64F);
 
-        patch_size_ = FLAGS_patch_size;
-        half_size_ = (FLAGS_patch_size - 1) / 2;
-        batch_size_ = FLAGS_batch_size;
-        update_rate_ = FLAGS_update_every_n_events;
+        patch_size_ = params.patch_size;
+        half_size_ = (params.patch_size - 1) / 2;
+        batch_size_ = params.batch_size;
+        update_rate_ = params.update_every_n_events;
 
         reset(init_center_, t_init);
     }
 
-    Patch() : Patch(cv::Point2f(-1,-1), -1)  // TODO find alternative to ros::Time::now().toSec()
+    // TODO find alternative to ros::Time::now().toSec() -- now -1
+    Patch(const x::EkltParams& params) : Patch(cv::Point2f(-1,-1), -1, params)
     {
         // contstructor for initializing lost features
         lost_ = true;
@@ -79,7 +76,7 @@ struct Patch
     {
         event_buffer_.push_front(event);
 
-        if (event_buffer_.size() > FLAGS_batch_size)
+        if (event_buffer_.size() > batch_size_)
         {
             event_buffer_.pop_back();
         }

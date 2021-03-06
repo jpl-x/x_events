@@ -215,8 +215,8 @@ State VIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr)
             << " received in xVIO class." << std::endl;
 
   // TODO: demo only - actually integrate EKLT
-//  eklt::Viewer v;
-//  eklt::Tracker t(v);
+//  Viewer v;
+//  EkltTracker t(v);
 //  t.processEvents(events_ptr);
 
   // Return invalid state for now
