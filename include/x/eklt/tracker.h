@@ -29,11 +29,20 @@ namespace x {
     void setParams(const EkltParams& params);
 
       /**
-     * @brief former ros callbacks for images and events, now made ROS free
+     * @brief processes all events in array and returns true if matches have been updated.
      */
-    void processEvents(const EventArray::ConstPtr &msg);
+    bool processEvents(const EventArray::ConstPtr &msg);
 
+    const MatchList& getMatches() const;
+
+    // TODO why don't we use: current_img.getTimestamp(), current_img.getFrameNumber()
     void processImage(double timestamp, TiledImage &current_img, unsigned int frame_number);
+
+    TiledImage getCurrentImage() {
+      return current_image_it_->second;
+    }
+
+    void renderVisualization(TiledImage& tracker_debug_image_output);
 
   private:
     /**
@@ -68,11 +77,6 @@ namespace x {
         VLOG_EVERY_N(1, 30) << "Waiting for events.";
       }
     }
-
-    /**
-     * @brief blocks until first image is received
-     */
-    void waitForFirstImage(ImageBuffer::iterator &current_image_it);
 
     /**
     * @brief Always assigns image to the first image before time  t_start
@@ -116,9 +120,9 @@ namespace x {
     void addFeatures(std::vector<int> &lost_indices, const ImageBuffer::iterator &image_it);
 
     /**
-     * @brief update a patch with the new event
+     * @brief update a patch with the new event, return true if patch position has been updated
      */
-    void updatePatch(Patch &patch, const Event &event);
+    bool updatePatch(Patch &patch, const Event &event);
 
     /**
      * @brief reset patches that have been lost.
@@ -177,7 +181,7 @@ namespace x {
     }
 
     EkltParams params_;
-
+    MatchList matches_;
     cv::Size sensor_size_;
 
     // image flags
@@ -212,6 +216,10 @@ namespace x {
 
     // tracks file
     std::ofstream tracks_file_;
+
+    void updateMatchListFromPatches();
+
+    int viewer_counter_ = 0;
   };
 
 }

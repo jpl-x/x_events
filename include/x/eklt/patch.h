@@ -9,6 +9,7 @@
 
 #include <x/eklt/error.h>
 #include <x/eklt/types.h>
+#include <x/vision/types.h>
 
 
 
@@ -49,6 +50,13 @@ struct Patch
     {
         // contstructor for initializing lost features
         lost_ = true;
+    }
+
+    Match toMatch() const {
+      Match m;
+      m.current = Feature(t_curr_, center_.x, center_.y);
+      m.previous = Feature(t_init_, init_center_.x, init_center_.y);
+      return m;
     }
 
     /**

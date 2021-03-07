@@ -34,6 +34,10 @@ namespace x {
   // Feature match
   struct Match
   {
+    Match() = default;
+    Match(const Feature& _previous, const Feature& _current)
+      : previous(_previous)
+      , current(_current) {}
     Feature previous;
     Feature current;
   };

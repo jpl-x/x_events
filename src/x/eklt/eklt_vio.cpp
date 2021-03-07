@@ -116,7 +116,12 @@ State EKLTVIO::processImageMeasurement(double timestamp,
 
   // Track features
   auto match_image_tracker_copy = match_img.clone();
-  tracker_.track(match_image_tracker_copy, timestamp_corrected, seq);
+  eklt_tracker_.processImage(timestamp_corrected, match_image_tracker_copy, seq);
+  //  tracker_.track(match_image_tracker_copy, timestamp_corrected, seq);
+
+  // EKLT does not provide an update from images
+  return State();
+
 
   MatchList match_list;
 
@@ -151,17 +156,33 @@ State EKLTVIO::processImageMeasurement(double timestamp,
 }
 
 
-State EKLTVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr) {
-  std::cout << "Events at timestamp " << events_ptr->events.front().ts
-            << " received in xEKLTVIO class." << std::endl;
+State EKLTVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr, TiledImage &tracker_img, TiledImage &feature_img) {
+//  std::cout << "Events at timestamp " << events_ptr->events.front().ts
+//            << " received in xEKLTVIO class." << std::endl;
 
-  // TODO: demo only - actually integrate EKLT
-//  x::Viewer v;
-//  x::EkltTracker t(v);
-//  t.processEvents(events_ptr);
+  bool matches_have_changed = eklt_tracker_.processEvents(events_ptr);
 
-  // Return invalid state for now
-  return State();
+  if (!matches_have_changed)
+    return State();
+
+  auto match_img = eklt_tracker_.getCurrentImage().clone();
+
+  VioMeasurement measurement(events_ptr->events.back().ts,
+                             seq++,
+                             eklt_tracker_.getMatches(),
+                             match_img,
+                             last_range_measurement_,
+                             last_angle_measurement_);
+  vio_updater_.setMeasurement(measurement);
+
+  // Process update measurement with xEKF
+  State updated_state = ekf_.processUpdateMeasurement();
+
+  // Populate GUI image outputs
+  eklt_tracker_.renderVisualization(tracker_img);
+  feature_img = vio_updater_.getFeatureImage();
+
+  return updated_state;
 }
 
 /** Calls the state manager to compute the cartesian coordinates of the SLAM features.

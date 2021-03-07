@@ -72,7 +72,8 @@ namespace x {
      * @param[in] events_ptr Pointer to event array.
      * @return The updated state, or invalid if the update could not happen.
      */
-    State processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr);
+    State processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr,
+                                   TiledImage &tracker_img, TiledImage &feature_img);
 
     /**
      * Compute cartesian coordinates of SLAM features for input state.
@@ -115,6 +116,8 @@ namespace x {
     SunAngleMeasurement last_angle_measurement_;
     bool initialized_{false};
 
+    // counts the asynchronous state updates triggered by the EKLT tracker
+    int seq;
   };
 } // namespace x
 

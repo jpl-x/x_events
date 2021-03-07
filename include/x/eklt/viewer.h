@@ -23,10 +23,11 @@ namespace x {
      */
     void setParams(const EkltParams &params);
 
-    /**
-     * @brief main running thread
-     */
-    void displayTracks();
+    void renderView();
+
+    const cv::Mat& getFeatureTrackViewImage() const {
+      return feature_track_view_;
+    }
 
     /**
      * @brief initializes the tracking data that is used to generate a preview
@@ -43,7 +44,7 @@ namespace x {
     /**
      * @brief function that draws on image
      */
-    void drawOnImage(FeatureTrackData &data, cv::Mat &view, cv::Mat &image);
+    void drawOnImage(FeatureTrackData &data, cv::Mat &view, const cv::Mat &image);
     /**
      * EDIT remove to become ROS free
      * @brief helper function to publish image

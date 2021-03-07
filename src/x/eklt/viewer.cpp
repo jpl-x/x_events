@@ -34,8 +34,8 @@ void Viewer::initViewData(double t) {
   // start viewer thread and publisher and allocate memory for feature_track_data_
 //    tracks_pub_ = it_.advertise("feature_tracks", 1);
 
-  std::thread viewerThread(&Viewer::displayTracks, this);
-  viewerThread.detach();
+//  std::thread viewerThread(&Viewer::displayTracks, this);
+//  viewerThread.detach();
 
   int num_patches = params_.max_corners;
   feature_track_data_.patches.reserve(num_patches);
@@ -55,26 +55,26 @@ void Viewer::initViewData(double t) {
 //    pub.publish(cv_image.toImageMsg());
 //}
 
-void Viewer::displayTracks() {
-//    ros::Rate r(30);
+//void Viewer::displayTracks() {
+////    ros::Rate r(30);
+//
+//  while (true) {
+//    //if the first image was not yet received do not do anything
+//    // otherwise prepare feature tracking preview
+////        r.sleep(); // TODO: find alternative (or move to x_vio_ros wrapper)
+//    if (!got_first_image_ || !params_.display_features) {
+//      continue;
+//    }
+//    {
+//      // generate image with features and processed rates
+//      std::lock_guard<std::mutex> lock(data_mutex_);
+//      drawOnImage(feature_track_data_, feature_track_view_, feature_track_data_.image);
+////        publishImage(feature_track_view_, ros::Time::now(), "bgr8", tracks_pub_);
+//    }
+//  }
+//}
 
-  while (true) {
-    //if the first image was not yet received do not do anything
-    // otherwise prepare feature tracking preview
-//        r.sleep(); // TODO: find alternative (or move to x_vio_ros wrapper)
-    if (!got_first_image_ || !params_.display_features) {
-      continue;
-    }
-    {
-      // generate image with features and processed rates
-      std::lock_guard<std::mutex> lock(data_mutex_);
-      drawOnImage(feature_track_data_, feature_track_view_, feature_track_data_.image);
-//        publishImage(feature_track_view_, ros::Time::now(), "bgr8", tracks_pub_);
-    }
-  }
-}
-
-void Viewer::drawOnImage(FeatureTrackData &data, cv::Mat &view, cv::Mat &image) {
+void Viewer::drawOnImage(FeatureTrackData &data, cv::Mat &view, const cv::Mat &image) {
   CHECK(image.size[0] > 0);
   const double &scale = params_.scale;
   const double &arrow_length = params_.arrow_length;
@@ -83,12 +83,12 @@ void Viewer::drawOnImage(FeatureTrackData &data, cv::Mat &view, cv::Mat &image) 
   view.setTo(0);
 
   //convert to grayscale to 3channel U8
-  cv::Mat c_image;
-#if CV_MAJOR_VERSION == 4
-  cv::cvtColor(image, c_image, cv::COLOR_BGR2GRAY);
-#else
-  cv::cvtColor(image, c_image, CV_GRAY2BGR);
-#endif
+  cv::Mat c_image = image.clone(); // HACK, for some reasons we've got already a B&W image here...
+//#if CV_MAJOR_VERSION == 4
+//  cv::cvtColor(image, c_image, cv::COLOR_BGR2GRAY);
+//#else
+//  cv::cvtColor(image, c_image, CV_GRAY2BGR);
+//#endif
 
   cv::Size size(scale * c_image.size[1], scale * c_image.size[0]);
   cv::resize(c_image, view, size, 0, 0, cv::INTER_NEAREST);
@@ -161,5 +161,11 @@ void Viewer::drawOnImage(FeatureTrackData &data, cv::Mat &view, cv::Mat &image) 
 
   }
 
+}
+
+void Viewer::renderView() {
+  if (!got_first_image_ || !params_.display_features)
+    return;
+  drawOnImage(feature_track_data_, feature_track_view_, feature_track_data_.image);
 }
 

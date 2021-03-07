@@ -6,6 +6,7 @@
 #include <ceres/ceres.h>
 #include <ceres/cubic_interpolation.h>
 #include <x/common/event_types.h>
+#include <x/vision/tiled_image.h>
 
 
 namespace x {
@@ -51,8 +52,8 @@ namespace x {
   struct Patch; //forward decl
   using Patches = std::vector<Patch>; //forward decl
 
-  using EventBuffer = std::deque<::x::Event>;
-  using ImageBuffer = std::map<double, cv::Mat>;
+  using EventBuffer = std::deque<Event>;
+  using ImageBuffer = std::map<double, TiledImage>;
 
   struct FeatureTrackData {
     Patches patches;
