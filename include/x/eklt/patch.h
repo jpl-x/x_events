@@ -31,9 +31,18 @@ struct Patch
    * @param half_size half size of the patch side length
    * @param t_init time stamp of the image where the corner was extracted
    */
-    Patch(cv::Point2d center, double t_init, const x::EkltParams& params):
-        init_center_(center), flow_angle_(0), t_init_(t_init), t_curr_(t_init), event_counter_(0), color_(0, 0, 255),
-        lost_(false), initialized_(false), tracking_quality_(1)
+    Patch(const cv::Point2d& center, double t_init, const x::EkltParams& params)
+      : init_center_(center)
+      , previous_center_(center)
+      , flow_angle_(0)
+      , event_counter_(0)
+      , t_init_(t_init)
+      , t_curr_(t_init)
+      , t_previous_(t_init)
+      , tracking_quality_(1)
+      , color_(0, 0, 255)
+      , lost_(false)
+      , initialized_(false)
     {
         warping_ = cv::Mat::eye(3,3,CV_64F);
 
@@ -46,7 +55,7 @@ struct Patch
     }
 
     // TODO find alternative to ros::Time::now().toSec() -- now -1
-    Patch(const x::EkltParams& params) : Patch(cv::Point2f(-1,-1), -1, params)
+    explicit Patch(const x::EkltParams& params) : Patch(cv::Point2f(-1,-1), -1, params)
     {
         // contstructor for initializing lost features
         lost_ = true;
@@ -55,7 +64,7 @@ struct Patch
     Match toMatch() const {
       Match m;
       m.current = Feature(t_curr_, center_.x, center_.y);
-      m.previous = Feature(t_init_, init_center_.x, init_center_.y);
+      m.previous = Feature(t_previous_, previous_center_.x, previous_center_.y);
       return m;
     }
 
@@ -90,6 +99,17 @@ struct Patch
         }
 
         event_counter_++;
+    }
+
+    /**
+     * @brief updates patch center by warping init_center_ with the current warping parameters
+     */
+    inline void updateCenter(double t) {
+      // save previous before update
+      previous_center_ = center_;
+      t_previous_ = t_curr_;
+      t_curr_ = t;
+      warpPixel(init_center_, center_);
     }
 
     /**
@@ -162,8 +182,10 @@ struct Patch
         
         center_ = init_center;
         init_center_ = init_center;
+        previous_center_ = init_center;
         t_curr_ = t;
         t_init_ = t;
+        t_previous_ = t;
 
         warping_ = cv::Mat::eye(3, 3, CV_64F);
         event_buffer_.clear();
@@ -179,6 +201,7 @@ struct Patch
 
     cv::Point2d init_center_;
     cv::Point2d center_;
+    cv::Point2d previous_center_;
     cv::Mat warping_;
     double flow_angle_;
 
@@ -189,11 +212,12 @@ struct Patch
 
     double t_init_;
     double t_curr_;
+    double t_previous_;
 
     double tracking_quality_;
     cv::Scalar color_;
 
-    int id_;
+    int id_ {-1};
     int batch_size_;
     int update_rate_;
     bool lost_;

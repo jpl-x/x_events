@@ -173,7 +173,7 @@ bool EkltTracker::updatePatch(Patch &patch, const Event &event) {
     bootstrapFeatureEvents(patch, event_frame);
 
   // update feature position and recompute the adaptive batchsize
-  optimizer_.optimizeParameters(event_frame, patch);
+  optimizer_.optimizeParameters(event_frame, patch, event.ts);
 
   if (tracks_file_.is_open())
     tracks_file_ << patch.id_ << " " << patch.t_curr_ << " " << patch.center_.x << " " << patch.center_.y
@@ -328,7 +328,7 @@ void EkltTracker::bootstrapFeatureKLT(Patch &patch, const cv::Mat &last_image, c
   // initialize warping as pure translation to new point
   patch.warping_.at<double>(0, 2) = -(next_points[0].x - points[0].x);
   patch.warping_.at<double>(1, 2) = -(next_points[0].y - points[0].y);
-  patch.warpPixel(patch.init_center_, patch.center_);
+  patch.updateCenter(current_image_it_->first);
 
   // check if new patch has been lost due to leaving the fov
   bool should_discard = bool(patch.center_.y < 0 || patch.center_.y >= sensor_size_.height || patch.center_.x < 0 ||
@@ -338,7 +338,6 @@ void EkltTracker::bootstrapFeatureKLT(Patch &patch, const cv::Mat &last_image, c
     lost_indices_.push_back(&patch - &patches_[0]);
   } else {
     patch.initialized_ = true;
-    patch.t_curr_ = current_image_it_->first;
     if (tracks_file_.is_open())
       tracks_file_ << patch.id_ << " " << patch.t_curr_ << " " << patch.center_.x << " " << patch.center_.y
                    << std::endl;

@@ -36,7 +36,7 @@ namespace x {
     /**
      * @brief perform optimization of cost function (7) in the original paper.
      */
-    void optimizeParameters(const cv::Mat &event_frame, Patch &patch);
+    void optimizeParameters(const cv::Mat &event_frame, Patch &patch, double t);
 
     EkltParams params_;
 

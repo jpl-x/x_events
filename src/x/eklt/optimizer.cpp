@@ -77,7 +77,7 @@ void Optimizer::precomputeLogImageArray(const Patches &patches, const ImageBuffe
   optimizer_data_[t] = OptimizerDatum(grad, image_it->second, patches.size());
 }
 
-void Optimizer::optimizeParameters(const cv::Mat &event_frame, Patch &patch) {
+void Optimizer::optimizeParameters(const cv::Mat &event_frame, Patch &patch, double t) {
   double norm = 0;
 
   ceres::Problem problem(prob_options);
@@ -113,7 +113,7 @@ void Optimizer::optimizeParameters(const cv::Mat &event_frame, Patch &patch) {
 
   //remap tracking cost to 0-1 (1 is best and 0 is bad)
   patch.tracking_quality_ = 1 - summary.final_cost / 2;
-  patch.warpPixel(patch.init_center_, patch.center_);
+  patch.updateCenter(t);
 }
 
 
