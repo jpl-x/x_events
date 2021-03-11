@@ -61,10 +61,14 @@ struct Patch
         lost_ = true;
     }
 
-    Match toMatch() const {
+    Match consumeMatch() {
       Match m;
-      m.current = Feature(t_curr_, center_.x, center_.y);
-      m.previous = Feature(t_previous_, previous_center_.x, previous_center_.y);
+      // for now assume no distortion
+      m.current = Feature(t_curr_, 0, center_.x, center_.y, center_.x, center_.y);
+      m.previous = Feature(t_previous_, 0, previous_center_.x, previous_center_.y, previous_center_.x, previous_center_.y);
+
+      saveCurrentInPrevious();
+
       return m;
     }
 
@@ -106,15 +110,19 @@ struct Patch
      */
     inline void updateCenter(double t) {
       // save previous before update
-      previous_center_ = center_;
-      t_previous_ = t_curr_;
+      saveCurrentInPrevious();
       t_curr_ = t;
       warpPixel(init_center_, center_);
     }
 
-    /**
-   * @brief warpPixel applies the inverse of the linear warp to unwarped and writes to warped.
-   */
+  void saveCurrentInPrevious() {
+    previous_center_ = center_;
+    t_previous_ = t_curr_;
+  }
+
+  /**
+ * @brief warpPixel applies the inverse of the linear warp to unwarped and writes to warped.
+ */
     inline void warpPixel(cv::Point2d unwarped, cv::Point2d &warped)
     {
         // compute the position of the feature according to the warp (equation (8) in the paper)

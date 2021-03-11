@@ -443,7 +443,7 @@ void EkltTracker::updateMatchListFromPatches() {
   matches_.clear();
   for (auto& p : patches_) {
     if (!p.lost_) {
-      matches_.push_back(p.toMatch());
+      matches_.push_back(p.consumeMatch());
     }
   }
 }

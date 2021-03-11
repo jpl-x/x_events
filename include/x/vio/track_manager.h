@@ -79,10 +79,10 @@ namespace x {
        * @param[out] img Output image for GUI
        */ 
       void manageTracks(MatchList& matches,
-          const AttitudeList cam_rots,
-          const int n_poses_max,
-          const int n_slam_features_max,
-          const int min_track_length,
+          const AttitudeList& cam_rots,
+          int n_poses_max,
+          int n_slam_features_max,
+          int min_track_length,
           TiledImage& img);
 
       std::vector<int> featureTriangleAtPoint(const Feature& lrf_img_pt, TiledImage& img) const;
@@ -129,7 +129,7 @@ namespace x {
        * @param[in] min_track_length Minimum track length for a visual feature to be
        *                             processed.
        */
-      void plotFeatures(TiledImage& img, const int min_track_length);
+      void plotFeatures(TiledImage& img, int min_track_length);
   };
 } // namespace x
 
