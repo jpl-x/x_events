@@ -183,9 +183,7 @@ bool EkltTracker::updatePatch(Patch &patch, const Event &event) {
                params_.displacement_px);
 
   if (shouldDiscard(patch)) {
-    // if the patch has been lost record it in lost_indices_
-    patch.lost_ = true;
-    lost_indices_.push_back(&patch - &patches_[0]);
+    discardPatch(patch);
   }
 
   // if we arrived here, the patch has been updated
@@ -443,7 +441,12 @@ void EkltTracker::updateMatchListFromPatches() {
   matches_.clear();
   for (auto& p : patches_) {
     if (!p.lost_) {
-      matches_.push_back(p.consumeMatch());
+      auto match = p.consumeMatch(most_current_time_);
+      if (isPointOutOfView(cv::Point2d(match.current.getX(), match.current.getY()))) {
+        discardPatch(p);
+      } else {
+        matches_.push_back(match);
+      }
     }
   }
 }

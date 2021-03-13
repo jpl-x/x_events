@@ -566,7 +566,7 @@ void TrackManager::plotFeatures(TiledImage &img,
   std::string potStr = std::string(" Pot: ") +
                        std::to_string(count_pot);
 
-  const double scale = 1;
+  const double scale = .7;
   cv::putText(img, slam_str, cv::Point((int) 10, (int) camera_.getHeight() - 10), cv::FONT_HERSHEY_PLAIN,
               scale, green, 1.5, 8, false);
 

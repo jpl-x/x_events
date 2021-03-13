@@ -61,15 +61,32 @@ struct Patch
         lost_ = true;
     }
 
-    Match consumeMatch() {
+    Match consumeMatch(double t) {
       Match m;
       // for now assume no distortion
-      m.current = Feature(t_curr_, 0, center_.x, center_.y, center_.x, center_.y);
       m.previous = Feature(t_previous_, 0, previous_center_.x, previous_center_.y, previous_center_.x, previous_center_.y);
+//      m.current = Feature(t_curr_, 0, center_.x, center_.y, center_.x, center_.y);
+//      saveCurrentInPrevious();
 
-      saveCurrentInPrevious();
+      m.current = interpolateToTime(t);
+      t_previous_ = t;
+      previous_center_.x = m.current.getX();
+      previous_center_.y = m.current.getY();
 
       return m;
+    }
+
+    Feature interpolateToTime(double t) const {
+      double x, y;
+      if (fabs(t_curr_ - t_previous_) >= 1e-6) {
+        x = previous_center_.x + ((t - t_previous_) / (t_curr_ - t_previous_)) * (center_.x - previous_center_.x);
+        y = previous_center_.y + ((t - t_previous_) / (t_curr_ - t_previous_)) * (center_.y - previous_center_.y);
+      } else {
+        x = center_.x;
+        y = center_.y;
+      }
+
+      return {t_curr_, 0, x, y, x, y};
     }
 
     /**
@@ -110,7 +127,7 @@ struct Patch
      */
     inline void updateCenter(double t) {
       // save previous before update
-      saveCurrentInPrevious();
+//      saveCurrentInPrevious();
       t_curr_ = t;
       warpPixel(init_center_, center_);
     }

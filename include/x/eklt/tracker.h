@@ -150,11 +150,14 @@ namespace x {
      * @brief checks if the optimization cost is above 1.6 (as described in the paper)
      */
     inline bool shouldDiscard(Patch &patch) {
-      bool out_of_fov = (patch.center_.y < 0 || patch.center_.y >= sensor_size_.height || patch.center_.x < 0 ||
-                         patch.center_.x >= sensor_size_.width);
+      bool out_of_fov = isPointOutOfView(patch.center_);
       bool exceeded_error = patch.tracking_quality_ < params_.tracking_quality;
 
       return exceeded_error || out_of_fov;
+    }
+
+    inline bool isPointOutOfView(const cv::Point2d& p) const {
+      return (p.y < 0 || p.y >= sensor_size_.height || p.x < 0 || p.x >= sensor_size_.width);
     }
 
     /**
@@ -220,6 +223,12 @@ namespace x {
     void updateMatchListFromPatches();
 
     int viewer_counter_ = 0;
+
+    inline void discardPatch(Patch &patch) {
+      // if the patch has been lost record it in lost_indices_
+      patch.lost_ = true;
+      lost_indices_.push_back(&patch - &patches_[0]);
+    }
   };
 
 }
