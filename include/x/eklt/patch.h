@@ -63,15 +63,14 @@ struct Patch
 
     Match consumeMatch(double t) {
       Match m;
-      // for now assume no distortion
-      m.previous = Feature(t_previous_, 0, previous_center_.x, previous_center_.y, previous_center_.x, previous_center_.y);
+//      // for now assume no distortion
+//      m.previous = Feature(t_previous_, 0, previous_center_.x, previous_center_.y, previous_center_.x, previous_center_.y);
 //      m.current = Feature(t_curr_, 0, center_.x, center_.y, center_.x, center_.y);
 //      saveCurrentInPrevious();
-
+      m.previous = previous_feature_;
       m.current = interpolateToTime(t);
-      t_previous_ = t;
-      previous_center_.x = m.current.getX();
-      previous_center_.y = m.current.getY();
+
+      previous_feature_ = m.current;
 
       return m;
     }
@@ -92,7 +91,7 @@ struct Patch
     /**
    * @brief contains checks if event is contained in square around the current feature position
    */
-    inline bool contains(double x, double y)
+    inline bool contains(double x, double y) const
     {
         return half_size_ >= std::abs(x - center_.x) && half_size_ >= std::abs(y - center_.y);
     }
@@ -100,7 +99,7 @@ struct Patch
     /**
    * @brief checks if 2x2 ((x,y) to (x+1,y+1)) update is within patch boundaries
    */
-    inline bool contains_patch_update(int x, int y)
+    inline bool contains_patch_update(int x, int y) const
     {
       return (((x+1) < patch_size_) && (x >= 0) &&
               ((y+1) < patch_size_) && (y >= 0));
@@ -127,7 +126,7 @@ struct Patch
      */
     inline void updateCenter(double t) {
       // save previous before update
-//      saveCurrentInPrevious();
+      saveCurrentInPrevious();
       t_curr_ = t;
       warpPixel(init_center_, center_);
     }
@@ -196,7 +195,7 @@ struct Patch
     /**
      * @brief resets patch after it has been lost. 
      */
-    inline void reset(cv::Point2d init_center, double t)
+    inline void reset(const cv::Point2d& init_center, double t)
     {
         // reset feature after it has been lost
         event_counter_ = 0;
@@ -211,6 +210,8 @@ struct Patch
         t_curr_ = t;
         t_init_ = t;
         t_previous_ = t;
+        previous_feature_ = Feature(t_curr_, 0, center_.x, center_.y, center_.x, center_.y);
+
 
         warping_ = cv::Mat::eye(3, 3, CV_64F);
         event_buffer_.clear();
@@ -227,6 +228,7 @@ struct Patch
     cv::Point2d init_center_;
     cv::Point2d center_;
     cv::Point2d previous_center_;
+    Feature previous_feature_;
     cv::Mat warping_;
     double flow_angle_;
 
