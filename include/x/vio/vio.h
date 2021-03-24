@@ -120,7 +120,6 @@ namespace x {
       StateManager state_manager_;
       RangeMeasurement last_range_measurement_;
       SunAngleMeasurement last_angle_measurement_;
-      bool initialized_ { false };
 
       /**
        * Import a feature match list from a std::vector.

@@ -132,6 +132,12 @@ namespace x {
        */
       void unlock();
 
+      /**
+       * Getter
+       * @return initialization state
+       */
+      InitStatus getInitStatus() const;
+
     private:
       /**
        * State and covariance propagator.

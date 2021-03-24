@@ -51,7 +51,7 @@ VIO::VIO()
 }
 
 bool VIO::isInitialized() const {
-  return initialized_;
+  return ekf_.getInitStatus() == InitStatus::kInitialized;
 }
 
 void VIO::setUp(const x::Params& params) {
@@ -217,7 +217,6 @@ VIO::computeSLAMCartesianFeaturesForState(
 
 void VIO::initAtTime(double now) {
   ekf_.lock();
-  initialized_ = false;
   vio_updater_.track_manager_.clear();
   vio_updater_.state_manager_.clear();
 
@@ -312,8 +311,6 @@ void VIO::initAtTime(double now) {
                  "the buffered states." << std::endl;
   }
   ekf_.unlock();
-
-  initialized_ = true;
 }
 
 /** \brief Gets 3D coordinates of MSCKF inliers and outliers.
