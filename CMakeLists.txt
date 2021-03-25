@@ -56,7 +56,7 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(Eigen3 REQUIRED)
 
 # Set build flags, depending on the architecture
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall")
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0")
