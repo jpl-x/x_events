@@ -17,6 +17,7 @@
 #include <x/vio/vio.h>
 #include <x/vio/tools.h>
 #include <x/vision/types.h>
+#include <easy/profiler.h>
 
 #include <iostream>
 
@@ -128,6 +129,7 @@ State VIO::processImageMeasurement(double timestamp,
                                    const unsigned int seq,
                                    TiledImage& match_img,
                                    TiledImage& feature_img) {
+  EASY_FUNCTION();
   // Time correction
   const double timestamp_corrected = timestamp + params_.time_offset;
 
@@ -327,6 +329,7 @@ State VIO::processImu(const double timestamp,
                       const unsigned int seq,
                       const Vector3& w_m,
                       const Vector3& a_m) {
+  EASY_FUNCTION();
   return ekf_.processImu(timestamp, seq, w_m, a_m);
 }
 
