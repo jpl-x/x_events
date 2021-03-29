@@ -130,7 +130,7 @@ set (SOURCE
 
 add_library (x ${SOURCE})
 
-target_compile_definitions(x PUBLIC -DUSING_easy_profiler_catkin)
+target_compile_definitions(x PUBLIC -DUSING_EASY_PROFILER)
 
 # Additional libraries to link against
 target_link_libraries(x

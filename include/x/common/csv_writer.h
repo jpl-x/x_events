@@ -11,6 +11,7 @@
 #include <cassert>
 #include <queue>
 #include <tuple>
+#include <easy/profiler.h>
 
 namespace x {
 
@@ -46,6 +47,7 @@ namespace x {
    *
    * @tparam Types types to be used in the
    */
+
   template<class ... Types>
   class CsvWriter {
   public:
@@ -55,7 +57,7 @@ namespace x {
      * @param filename
      * @param column_names e.g. { "col1", "col2" }
      */
-    CsvWriter(const std::string& filename, std::initializer_list<std::string> column_names);
+    CsvWriter(const std::string& filename, std::array<std::string, sizeof...(Types)> column_names);
 
     /**
      * Writes the buffer in CSV-format to the open file.
@@ -69,7 +71,13 @@ namespace x {
       outfile_.flush();
     }
 
+    void addRow(const Types &... values) {
+      EASY_BLOCK("CSV addRow");
+      buffer_.emplace(values...);
+    }
+
     void addRow(Types &&... values) {
+      EASY_BLOCK("CSV addRow");
       buffer_.emplace(values...);
     }
 
@@ -84,8 +92,7 @@ namespace x {
   };
 
   template<class... Types>
-  CsvWriter<Types...>::CsvWriter(const std::string &filename, std::initializer_list<std::string> column_names) {
-    assert(column_names.size() == sizeof...(Types));
+  CsvWriter<Types...>::CsvWriter(const std::string &filename, std::array<std::string, sizeof...(Types)> column_names) {
     outfile_.open(filename);
 
     // use double output precision
