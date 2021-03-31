@@ -123,6 +123,26 @@ namespace x
 
     double traj_timeout_gui;
     bool init_at_startup;
+
+    /**
+     * Event related parameters.
+     */
+    double event_cam_fx;
+    double event_cam_fy;
+    double event_cam_cx;
+    double event_cam_cy;
+    double event_cam_s;
+    int event_img_height;
+    int event_img_width;
+    Vector3 p_ec;
+    Quaternion q_ec;
+    double event_cam_time_offset;
+
+    int n_events_min;
+    int n_events_max;
+    int noise_event_rate;
+    double event_norm_factor;
+    bool correct_event_motion;
   };
 
   /**
