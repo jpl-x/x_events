@@ -216,3 +216,7 @@ bool Ekf::repropagateFromStateAtIdx(const State& state, const int idx) {
 
   return true;
 }
+
+InitStatus Ekf::getInitStatus() const {
+  return init_status_;
+}

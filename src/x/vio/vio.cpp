@@ -17,6 +17,7 @@
 #include <x/vio/vio.h>
 #include <x/vio/tools.h>
 #include <x/vision/types.h>
+#include <easy/profiler.h>
 
 #include <x/eklt/tracker.h>
 
@@ -53,7 +54,7 @@ VIO::VIO()
 }
 
 bool VIO::isInitialized() const {
-  return initialized_;
+  return ekf_.getInitStatus() == InitStatus::kInitialized;
 }
 
 void VIO::setUp(const x::Params& params) {
@@ -130,6 +131,7 @@ State VIO::processImageMeasurement(double timestamp,
                                    const unsigned int seq,
                                    TiledImage& match_img,
                                    TiledImage& feature_img) {
+  EASY_FUNCTION();
   // Time correction
   const double timestamp_corrected = timestamp + params_.time_offset;
 
@@ -233,7 +235,6 @@ VIO::computeSLAMCartesianFeaturesForState(
 
 void VIO::initAtTime(double now) {
   ekf_.lock();
-  initialized_ = false;
   vio_updater_.track_manager_.clear();
   vio_updater_.state_manager_.clear();
 
@@ -328,8 +329,6 @@ void VIO::initAtTime(double now) {
                  "the buffered states." << std::endl;
   }
   ekf_.unlock();
-
-  initialized_ = true;
 }
 
 /** \brief Gets 3D coordinates of MSCKF inliers and outliers.
@@ -346,6 +345,7 @@ State VIO::processImu(const double timestamp,
                       const unsigned int seq,
                       const Vector3& w_m,
                       const Vector3& a_m) {
+  EASY_FUNCTION();
   return ekf_.processImu(timestamp, seq, w_m, a_m);
 }
 

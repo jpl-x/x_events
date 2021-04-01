@@ -57,9 +57,11 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 find_package(Eigen3 REQUIRED)
+find_package(easy_profiler_catkin REQUIRED)
+
 
 # Set build flags, depending on the architecture
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall")
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0")
@@ -102,6 +104,7 @@ include_directories (SYSTEM
   ${OpenCV_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
+  ${easy_profiler_catkin_INCLUDE_DIRS}
 )
 
 set (SOURCE
@@ -135,8 +138,13 @@ set (SOURCE
 
 add_library (x ${SOURCE})
 
+target_compile_definitions(x PUBLIC -DUSING_EASY_PROFILER)
+
 # Additional libraries to link against
 target_link_libraries(x
   ${OpenCV_LIBRARIES}
   ${catkin_LIBRARIES}
+  ${easy_profiler_catkin_LIBRARIES}
 )
+
+#message(WARN "Profiler library = ${easy_profiler_catkin_LIBRARIES}")
