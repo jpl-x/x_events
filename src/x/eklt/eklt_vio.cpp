@@ -35,7 +35,7 @@ bool EKLTVIO::isInitialized() const {
   return initialized_;
 }
 
-void EKLTVIO::setUp(const x::Params &params, const x::EkltParams &eklt_params) {
+void EKLTVIO::setUp(const x::Params &params, const x::EkltParams &eklt_params, const EkltPerformanceLoggerPtr& perf_logger) {
   const x::Camera cam(params.cam_fx, params.cam_fy, params.cam_cx, params.cam_cy, params.cam_s, params.img_width,
                       params.img_height);
   const x::Tracker tracker(cam, params.fast_detection_delta, params.non_max_supp, params.block_half_length,
@@ -54,6 +54,7 @@ void EKLTVIO::setUp(const x::Params &params, const x::EkltParams &eklt_params) {
 
   // sets also EKLT params in viewer and optimizer class
   eklt_tracker_.setParams(eklt_params);
+  eklt_tracker_.setPerfLogger(perf_logger);
 
   // Set up EKLTVIO state manager
   const int n_poses_state = params.n_poses_max;

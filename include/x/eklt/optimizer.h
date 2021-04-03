@@ -11,7 +11,7 @@ namespace x {
    * @brief The Optimizer performs optimization to find the best warp and optical flow for each patch.
    */
   struct Optimizer {
-    explicit Optimizer(EkltParams params);
+    explicit Optimizer(EkltParams params, EkltPerformanceLoggerPtr perf_logger = nullptr);
 
     ~Optimizer();
 
@@ -19,6 +19,8 @@ namespace x {
      * @brief updates the EKLT parameters
      */
     void setParams(const EkltParams &params);
+
+    void setPerfLogger(const EkltPerformanceLoggerPtr& perf_logger);
 
     /**
      * @brief Counts how many features are using the current image with timestamp time. 
@@ -39,6 +41,7 @@ namespace x {
     void optimizeParameters(const cv::Mat &event_frame, Patch &patch, double t);
 
     EkltParams params_;
+    EkltPerformanceLoggerPtr perf_logger_;
 
     ceres::Problem::Options prob_options;
     ceres::Solver::Options solver_options;

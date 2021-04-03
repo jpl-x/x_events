@@ -7,9 +7,45 @@
 #include <ceres/cubic_interpolation.h>
 #include <x/common/event_types.h>
 #include <x/vision/tiled_image.h>
+#include <x/common/csv_writer.h>
+#include <filesystem>
+#include <easy/profiler.h>
+
 
 
 namespace x {
+
+  enum class EkltTrackUpdateType : char {
+    Init,
+    Bootstrap,
+    Update,
+    Lost
+  };
+}
+
+std::ostream& operator << (std::ostream& os, const x::EkltTrackUpdateType& obj);
+
+namespace x {
+
+  using EventsCsv = CsvWriter<profiler::timestamp_t, profiler::timestamp_t>;
+  using OptimizationsCsv = CsvWriter<profiler::timestamp_t, profiler::timestamp_t, int>;
+  using TracksCsv = CsvWriter<profiler::timestamp_t, int, EkltTrackUpdateType, double, double, double>;
+
+
+  struct EkltPerformanceLogger {
+
+    explicit EkltPerformanceLogger(const std::filesystem::path & path)
+     : events_csv(path / "events.csv", {"ts_start", "ts_stop"})
+     , optimizations_csv(path / "optimizations.csv", {"ts_start", "ts_stop", "num_iterations"})
+     , tracks_csv(path / "tracks.csv", {"ts", "id", "update_type", "patch_t_current", "center_x", "center_y"}) {}
+
+    EventsCsv events_csv;
+    OptimizationsCsv optimizations_csv;
+    TracksCsv tracks_csv;
+  };
+
+  typedef std::shared_ptr<EkltPerformanceLogger> EkltPerformanceLoggerPtr;
+
   struct EkltParams {
     // feature detection
     int max_corners = 100; // Maximum features allowed to be tracked
@@ -22,7 +58,6 @@ namespace x {
     double quality_level = 0; // Determines range of harris score allowed between the maximum and minimum. Passed to goodFeaturesToTrack
     double log_eps = 1e-2; // Small constant to compute log image. To avoid numerical issues normally we compute log(img /255 + log_eps)
     double first_image_t = -1; // If specified discards all images until this time.
-    std::string tracks_file_txt = ""; // If specified, writes feature tracks to file with format id t x y.
 
     // tracker
     int lk_window_size = 15; // Parameter for KLT. Used for bootstrapping feature.
@@ -44,10 +79,6 @@ namespace x {
     bool display_feature_id = false; // Whether or not to display feature ids
     bool display_feature_patches = false; // Whether or not to display feature patches
   };
-}
-
-
-namespace x {
 
   struct Patch; //forward decl
   using Patches = std::vector<Patch>; //forward decl

@@ -21,12 +21,14 @@ namespace x {
  */
   class EkltTracker {
   public:
-    explicit EkltTracker(Viewer &viewer, EkltParams params = {});
+    explicit EkltTracker(Viewer &viewer, EkltParams params = {}, EkltPerformanceLoggerPtr=nullptr);
 
     /**
      * @brief updates the EKLT parameters in the tracker as well as in the associated viewer and optimizer
      */
     void setParams(const EkltParams& params);
+
+    void setPerfLogger(const EkltPerformanceLoggerPtr& perf_logger);
 
       /**
      * @brief processes all events in array and returns true if matches have been updated.
@@ -184,6 +186,7 @@ namespace x {
     }
 
     EkltParams params_;
+    EkltPerformanceLoggerPtr perf_logger_;
     MatchList matches_;
     cv::Size sensor_size_;
 
@@ -217,9 +220,6 @@ namespace x {
     std::mutex events_mutex_;
     std::mutex images_mutex_;
 
-    // tracks file
-    std::ofstream tracks_file_;
-
     void updateMatchListFromPatches();
 
     int viewer_counter_ = 0;
@@ -228,6 +228,10 @@ namespace x {
       // if the patch has been lost record it in lost_indices_
       patch.lost_ = true;
       lost_indices_.push_back(&patch - &patches_[0]);
+
+      if (perf_logger_)
+        perf_logger_->tracks_csv.addRow(profiler::now(), patch.id_, EkltTrackUpdateType::Lost,
+                                        patch.t_curr_, patch.center_.x, patch.center_.y);
     }
   };
 

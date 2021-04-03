@@ -1,11 +1,12 @@
 
 #include <x/eklt/optimizer.h>
+#include <easy/profiler.h>
 
 
 using namespace x;
 
-Optimizer::Optimizer(EkltParams params)
-  : params_(std::move(params)), patch_size_(params_.patch_size) {
+Optimizer::Optimizer(EkltParams params, EkltPerformanceLoggerPtr perf_logger)
+  : params_(std::move(params)), perf_logger_(perf_logger), patch_size_(params_.patch_size) {
   prob_options.cost_function_ownership = ceres::DO_NOT_TAKE_OWNERSHIP;
   prob_options.local_parameterization_ownership = ceres::DO_NOT_TAKE_OWNERSHIP;
   prob_options.loss_function_ownership = ceres::DO_NOT_TAKE_OWNERSHIP;
@@ -78,6 +79,8 @@ void Optimizer::precomputeLogImageArray(const Patches &patches, const ImageBuffe
 }
 
 void Optimizer::optimizeParameters(const cv::Mat &event_frame, Patch &patch, double t) {
+  auto start = profiler::now();
+  EASY_FUNCTION();
   double norm = 0;
 
   ceres::Problem problem(prob_options);
@@ -114,6 +117,13 @@ void Optimizer::optimizeParameters(const cv::Mat &event_frame, Patch &patch, dou
   //remap tracking cost to 0-1 (1 is best and 0 is bad)
   patch.tracking_quality_ = 1 - summary.final_cost / 2;
   patch.updateCenter(t);
+
+  if (perf_logger_)
+    perf_logger_->optimizations_csv.addRow(start, profiler::now(), summary.iterations.size());
+}
+
+void Optimizer::setPerfLogger(const EkltPerformanceLoggerPtr &perf_logger) {
+  perf_logger_ = perf_logger;
 }
 
 

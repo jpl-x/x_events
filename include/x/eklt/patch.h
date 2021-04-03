@@ -11,6 +11,8 @@
 #include <x/eklt/types.h>
 #include <x/vision/types.h>
 
+#include <easy/profiler.h>
+
 
 
 namespace x
@@ -153,6 +155,7 @@ struct Patch
    */
     inline void getEventFramesAndReset(cv::Mat &event_frame)
     {
+//        EASY_BLOCK("Event accumulation");
         // implements the function (2) in the paper
         event_frame = cv::Mat::zeros(2*half_size_+1, 2*half_size_+1, CV_64F);
 

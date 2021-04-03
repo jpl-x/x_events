@@ -27,7 +27,7 @@ namespace x {
 
     bool isInitialized() const;
 
-    void setUp(const Params &params, const EkltParams &eklt_params);
+    void setUp(const Params &params, const EkltParams &eklt_params, const EkltPerformanceLoggerPtr& perf_logger = nullptr);
 
     void setLastRangeMeasurement(RangeMeasurement range_measurement);
 

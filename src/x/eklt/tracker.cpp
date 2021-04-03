@@ -9,14 +9,15 @@
 #include <x/eklt/tracker.h>
 
 #include <cassert>
+#include <easy/profiler.h>
 
 
 using namespace x;
 
-EkltTracker::EkltTracker(Viewer &viewer, EkltParams params)
-  : params_(std::move(params)), sensor_size_(0, 0), got_first_image_(false), most_current_time_(-1.0),
-    viewer_ptr_(&viewer),
-    optimizer_(params_) {
+EkltTracker::EkltTracker(Viewer &viewer, EkltParams params, EkltPerformanceLoggerPtr p_logger)
+  : params_(std::move(params)), perf_logger_(std::move(p_logger))
+  , sensor_size_(0, 0), got_first_image_(false), most_current_time_(-1.0)
+  , viewer_ptr_(&viewer), optimizer_(params_, perf_logger_) {
 //    event_sub_ = nh_.subscribe("events", 10, &EkltTracker::processEvents, this);
 //    image_sub_ = it_.subscribe("images", 1, &EkltTracker::imageCallback, this);
 
@@ -70,12 +71,6 @@ void EkltTracker::initPatches(Patches &patches, std::vector<int> &lost_indices, 
 }
 
 void EkltTracker::init(const ImageBuffer::iterator &image_it) {
-  // starts a file where feature track updates are recorded on each row (feature id, t, x, y)
-  VLOG(1) << "Will write tracks data to '" << params_.tracks_file_txt << "'.";
-  if (!params_.tracks_file_txt.empty()) {
-    tracks_file_.open(params_.tracks_file_txt);
-  }
-
   // extracts corners and extracts patches around them.
   initPatches(patches_, lost_indices_, params_.max_corners, image_it);
 
@@ -175,9 +170,9 @@ bool EkltTracker::updatePatch(Patch &patch, const Event &event) {
   // update feature position and recompute the adaptive batchsize
   optimizer_.optimizeParameters(event_frame, patch, event.ts);
 
-  if (tracks_file_.is_open())
-    tracks_file_ << patch.id_ << " " << patch.t_curr_ << " " << patch.center_.x << " " << patch.center_.y
-                 << std::endl;
+  if (perf_logger_)
+    perf_logger_->tracks_csv.addRow(profiler::now(), patch.id_, EkltTrackUpdateType::Update,
+                                    patch.t_curr_, patch.center_.x, patch.center_.y);
 
   setBatchSize(patch, patch_gradients_[&patch - &patches_[0]].first, patch_gradients_[&patch - &patches_[0]].second,
                params_.displacement_px);
@@ -301,9 +296,9 @@ void EkltTracker::extractPatches(Patches &patches, const int &num_patches, const
   for (const auto & feature : features) {
     patches.emplace_back(feature, image_it->first, params_);
     Patch &patch = patches[patches.size() - 1];
-    if (tracks_file_.is_open())
-      tracks_file_ << patch.id_ << " " << patch.t_curr_ << " " << patch.center_.x << " " << patch.center_.y
-                   << std::endl;
+    if (perf_logger_)
+      perf_logger_->tracks_csv.addRow(profiler::now(), patch.id_, EkltTrackUpdateType::Init,
+                                      patch.t_curr_, patch.center_.x, patch.center_.y);
   }
 }
 
@@ -336,9 +331,9 @@ void EkltTracker::bootstrapFeatureKLT(Patch &patch, const cv::Mat &last_image, c
     lost_indices_.push_back(&patch - &patches_[0]);
   } else {
     patch.initialized_ = true;
-    if (tracks_file_.is_open())
-      tracks_file_ << patch.id_ << " " << patch.t_curr_ << " " << patch.center_.x << " " << patch.center_.y
-                   << std::endl;
+    if (perf_logger_)
+      perf_logger_->tracks_csv.addRow(profiler::now(), patch.id_, EkltTrackUpdateType::Bootstrap,
+                                      patch.t_curr_, patch.center_.x, patch.center_.y);
   }
 }
 
@@ -366,6 +361,25 @@ void EkltTracker::bootstrapFeatureEvents(Patch &patch, const cv::Mat &event_fram
   patch.initialized_ = true;
 }
 
+class EventPerfHelper {
+public:
+  explicit EventPerfHelper(const EkltPerformanceLoggerPtr& ptr) {
+    if (ptr) {
+      perf_logger_ = ptr;
+      t_start_ = profiler::now();
+    }
+  }
+
+  ~EventPerfHelper() {
+    if (perf_logger_) {
+      perf_logger_->events_csv.addRow(t_start_, profiler::now());
+    }
+  }
+
+  EkltPerformanceLoggerPtr perf_logger_;
+  profiler::timestamp_t t_start_;
+};
+
 bool EkltTracker::processEvents(const EventArray::ConstPtr &msg) {
   if (!got_first_image_) {
     LOG_EVERY_N(INFO, 20) << "Events dropped since no image present.";
@@ -374,6 +388,8 @@ bool EkltTracker::processEvents(const EventArray::ConstPtr &msg) {
 
   bool match_list_needs_update = false;
   for (const auto &ev : msg->events) {
+    EASY_EVENT("Single Event");
+    EventPerfHelper helper(perf_logger_);
     // keep track of the most current time with latest time stamp from event
     if (ev.ts >= most_current_time_)
       most_current_time_ = ev.ts;
@@ -454,6 +470,11 @@ void EkltTracker::updateMatchListFromPatches() {
 void EkltTracker::renderVisualization(TiledImage &tracker_debug_image_output) {
   viewer_ptr_->renderView();
   tracker_debug_image_output = viewer_ptr_->getFeatureTrackViewImage();
+}
+
+void EkltTracker::setPerfLogger(const EkltPerformanceLoggerPtr &perf_logger) {
+  perf_logger_ = perf_logger;
+  optimizer_.setPerfLogger(perf_logger);
 }
 
 
