@@ -213,10 +213,11 @@ State VIO::processMatchesMeasurement(double timestamp,
 
 State VIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr)
 {
+#ifdef DEBUG
   std::cout << "Events at timestamp " << events_ptr->events.front().ts
             << " received in xVIO class." << std::endl;
+#endif
 
-  // TODO: demo only - actually integrate EKLT
 //  Viewer v;
 //  EkltTracker t(v);
 //  t.processEvents(events_ptr);
