@@ -25,10 +25,12 @@ Camera::Camera(double fx,
                double fy,
                double cx,
                double cy,
-               double s,
+               DistortionModel distortion_model,
+               std::vector<double> distortion_parameters,
                unsigned int img_width,
                unsigned int img_height)
-: s_(s)
+: distortion_model_(distortion_model)
+, distortion_parameters_(std::move(distortion_parameters))
 , img_width_(img_width)
 , img_height_(img_height)
 {
@@ -41,7 +43,6 @@ Camera::Camera(double fx,
   inv_fy_ = 1.0 / fy_;
   cx_n_ = cx_ * inv_fx_;
   cy_n_ = cy_ * inv_fy_;
-  s_term_ = 1.0 / ( 2.0 * std::tan(s / 2.0) );
 }
 
 unsigned int Camera::getWidth() const
@@ -88,12 +89,47 @@ void Camera::undistort(Feature& feature) const
 
   const double dist_r = sqrt(cam_dist_x * cam_dist_x + cam_dist_y * cam_dist_y);
 
-  double distortion_factor = 1.0;
-  if(dist_r > 0.01)
-    distortion_factor = inverseTf(dist_r) / dist_r;
+  double xn;
+  double yn;
 
-  const double xn = distortion_factor * cam_dist_x;
-  const double yn = distortion_factor * cam_dist_y;
+  switch(distortion_model_) {
+    case DistortionModel::FOV: {
+      const double& s = distortion_parameters_[0];
+      const double s_term = 1.0 / ( 2.0 * std::tan(s / 2.0) );
+
+      double distortion_factor = 1.0;
+      if(dist_r > 0.01 && s!= 0.0) {
+        distortion_factor = std::tan(dist_r * s) * s_term / dist_r;
+      }
+      xn = distortion_factor * cam_dist_x;
+      yn = distortion_factor * cam_dist_y;
+
+      break;
+    }
+    case DistortionModel::RADIAL_TANGENTIAL: {
+      // @see https://github.com/ethz-asl/image_undistort/blob/master/src/undistorter.cpp
+      // Split out parameters for easier reading
+      const double& k1 = distortion_parameters_[0];
+      const double& k2 = distortion_parameters_[1];
+      const double& k3 = distortion_parameters_[4];
+      const double& p1 = distortion_parameters_[2];
+      const double& p2 = distortion_parameters_[3];
+
+      // Undistort
+      const double r2 = cam_dist_x * cam_dist_x + cam_dist_y * cam_dist_y;
+      const double r4 = r2 * r2;
+      const double r6 = r4 * r2;
+      const double kr = (1.0 + k1 * r2 + k2 * r4 + k3 * r6);
+      xn = cam_dist_x * kr + 2.0 * p1 * cam_dist_x * cam_dist_y + p2 * (r2 + 2.0 * cam_dist_x * cam_dist_x);
+      yn = cam_dist_y * kr + 2.0 * p2 * cam_dist_x * cam_dist_y + p1 * (r2 + 2.0 * cam_dist_y * cam_dist_y);
+      break;
+    }
+    default: {
+      std::ostringstream message;
+      message << "Distortion model not implemented - model: " << static_cast<int>(distortion_model_);
+      throw std::runtime_error(message.str());
+    }
+  }
 
   feature.setX(xn * fx_ + cx_);
   feature.setY(yn * fy_ + cy_);
@@ -147,12 +183,4 @@ TrackList Camera::normalize(const TrackList& tracks, const size_t max_size) cons
     normalized_tracks[i] = normalize(tracks[i], max_size);
 
   return normalized_tracks;
-}
-
-double Camera::inverseTf(const double dist) const
-{
-  if(s_ == 0.0)
-    return dist;
-  else
-    return std::tan(dist * s_) * s_term_;
 }
