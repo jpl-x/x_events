@@ -16,6 +16,8 @@ cmake_minimum_required(VERSION 2.8.3)
 project(x)
 set (CMAKE_BUILD_TYPE Release)
 
+#set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Og") # REMOVE ME LATER
+
 # Set definitions
 if(DUAL_THREAD)
   add_definitions(-DDUAL_THREAD)
