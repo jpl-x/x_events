@@ -19,6 +19,7 @@
 
 #include <x/vision/types.h>
 #include <x/vision/track.h>
+#include <x/vio/types.h>
 #include "opencv2/highgui/highgui.hpp"
 
 namespace x
@@ -31,7 +32,8 @@ public:
          double fy,
          double cx,
          double cy,
-         double s,
+         DistortionModel distortion_model,
+         std::vector<double> distortion_parameters,
          unsigned int img_width,
          unsigned int img_height);
   unsigned int getWidth() const;
@@ -46,12 +48,14 @@ public:
   Feature normalize(const Feature& feature) const;
   Track normalize(const Track& track, const size_t max_size = 0) const;
   TrackList normalize(const TrackList& tracks, const size_t max_size = 0) const;
+
 private:
   double fx_ = 0.0; // Focal length
   double fy_ = 0.0;
   double cx_ = 0.0; // Principal point
   double cy_ = 0.0;
-  double s_ = 0.0;  // Distortion
+  DistortionModel distortion_model_ = DistortionModel::FOV;
+  std::vector<double> distortion_parameters_ = {0.0};
   unsigned int img_width_ = 0.0;
   unsigned int img_height_ = 0.0;
   // Distortion terms we only want to compute once
@@ -59,9 +63,6 @@ private:
   double inv_fy_ = -1;
   double cx_n_   = -1; // Principal point in normalized coordinates
   double cy_n_   = -1;
-  double s_term_ = -1; // Distortion term
-  // Inverse FOV distortion transformation
-  double inverseTf(const double dist) const;
 };
 }
 
