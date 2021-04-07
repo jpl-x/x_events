@@ -94,7 +94,8 @@ namespace x {
        * @param[in] events_ptr Pointer to event array.
        * @return The updated state, or invalid if the update could not happen.
        */
-      State processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr);
+      State processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr,
+                                     cv::Mat& event_img);
 
       /**
        * Compute cartesian coordinates of SLAM features for input state.

@@ -207,10 +207,171 @@ State VIO::processMatchesMeasurement(double timestamp,
   return updated_state;
 }
 
-State VIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr)
+State VIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr,
+                                    cv::Mat& event_img)
 {
-  std::cout << "Events at timestamp " << events_ptr->events.front().ts
-            << " received in xVIO class." << std::endl;
+#ifdef DEBUG
+  std::cout << events_ptr->events.size() << " events at timestamp "
+            << events_ptr->events.front().ts << " received in xVIO class."
+            << std::endl;
+#endif
+
+  // Define temporal window for event accumulation.
+  double t0 = events_ptr->events.front().ts; // TODO(frockenb) replace with IMU time stamps
+  double t1 = events_ptr->events.back().ts;
+
+  // Determine the number of events used for noise detection.
+  size_t n_events_for_noise_detection = std::min(events_ptr->events.size(), size_t(params_.n_events_noise_detection_min));
+
+  // Calculate average event rate over temporal window.
+  double event_rate = 0.0;
+  if (events_ptr->events.size() > n_events_for_noise_detection)
+  {
+    if (0.0 < (events_ptr->events.back().ts
+               - events_ptr->events.at(events_ptr->events.size()-n_events_for_noise_detection).ts))
+    {
+      event_rate = n_events_for_noise_detection /
+                   (events_ptr->events.back().ts -
+                    events_ptr->events.at(events_ptr->events.size()-n_events_for_noise_detection).ts);
+    }
+  }
+
+  // Check if event rate is above noise threshold.
+  if (event_rate < params_.noise_event_rate)
+  {
+#ifdef DEBUG
+    std::cout << "Event rate at timestamp " << events_ptr->events.front().ts
+              << " below threshold." << event_rate << std::endl;
+#endif
+    // Return invalid state
+    return State();
+  }
+  else
+  {
+    // Calculate index of oldest event used for event accumulation.
+    int first_event_idx = std::max((int)events_ptr->events.size() - params_.n_events_max, 0);
+
+    // Calculate time interval in which all events lie.
+    double temporal_window_size = events_ptr->events.back().ts - events_ptr->events.at(first_event_idx).ts;
+
+#ifdef DEBUG
+    if (events_ptr->events.size() < params_.n_events_max)
+    {
+      std::cout << "Requested frame size of length " << params_.n_events_max
+                << " events, but I only have " << events_ptr->events.size()
+                << " events in the last event array." << std::endl;
+    }
+#endif
+
+    Matrix4 T_C_B; // TODO(frockenb) use quaternion given in params_.q_ec
+    T_C_B << 1.0, 0.0, 0.0, params_.p_ec[0],
+             0.0, 1.0, 0.0, params_.p_ec[1],
+             0.0, 0.0, 1.0, params_.p_ec[2],
+             0.0, 0.0, 0.0, 1.0;
+
+    Matrix4 T_IMU_1_0;
+    T_IMU_1_0 << 1.0, 0.0, 0.0, 0.0,
+                 0.0, 1.0, 0.0, 0.0,
+                 0.0, 0.0, 1.0, 0.0,
+                 0.0, 0.0, 0.0, 1.0;
+
+    Matrix4 T_1_0 = T_C_B * T_IMU_1_0 * T_C_B.inverse();
+
+    /* Draw Events Start */
+    Matrix4 K;
+    K << params_.event_cam_fx, 0.0,                  params_.event_cam_cx, 0.0,
+         0.0,                  params_.event_cam_fy, params_.event_cam_cy, 0.0,
+         0.0,                  0.0,                  1.0,                  0.0,
+         0.0,                  0.0,                  0.0,                  1.0;
+
+    Matrix4 T = K * T_1_0 * K.inverse();
+
+    double dt = 0.0;
+    size_t event_counter = 0;
+    for(auto e = events_ptr->events.begin() + (first_event_idx - 1); e != events_ptr->events.end(); ++e)
+    {
+      if (event_counter % 10 == 0)
+      {
+        dt = static_cast<float>(t1 - e->ts) / (t1 - t0);
+      }
+
+      // Scope start
+      Eigen::Vector4d f;
+      f << e->x, e->y, 1.0, params_.rho_0;
+      //Eigen::Vector4d f; //TODO(frockenb): Compute look up table and add proper depth
+      //f.head<2>() = rig_->dvs_keypoint_lut_.col(e->x + e->y * width);
+      //f[2] = 1.;
+      //f[3] = 1./depth;
+
+      // Scope end
+
+      if (params_.correct_event_motion)
+      {
+        f = (1.0 - dt) * f + dt * (T * f);
+      }
+
+      int x0 = std::floor(f[0]);
+      int y0 = std::floor(f[1]);
+
+      if (x0 >= 0 && x0 < events_ptr->width-1 && y0 >= 0 && y0 < events_ptr->height-1)
+      {
+        const float fx = f[0] - x0,
+                    fy = f[1] - y0;
+
+        Eigen::Vector4f w((1.f-fx)*(1.f-fy),
+                          (fx)*(1.f-fy),
+                          (1.f-fx)*(fy),
+                          (fx)*(fy));
+
+        event_img.at<float>(y0, x0) += w[0];
+        event_img.at<float>(y0, x0+1) += w[1];
+        event_img.at<float>(y0+1, x0) += w[2];
+        event_img.at<float>(y0+1, x0+1) += w[3];
+      }
+
+    }
+    /* Draw Events End */
+
+
+    event_img.convertTo(event_img, CV_8U, 255.0/params_.event_norm_factor);
+
+    /* Image callback functions. */
+    TiledImage tiled_event_img = TiledImage(event_img, t1, events_ptr->seq,
+                                            params_.n_tiles_h,
+                                            params_.n_tiles_w,
+                                            params_.max_feat_per_tile);
+
+    // Time correction
+    const double timestamp_corrected = t1 + params_.event_cam_time_offset;
+
+    // Pass measurement data to updater
+    MatchList empty_list; // TODO(jeff) get rid of image callback and process match
+    // list from a separate tracker module.
+    VioMeasurement measurement(timestamp_corrected,
+                               events_ptr->seq,
+                               empty_list,
+                               tiled_event_img,
+                               last_range_measurement_,
+                               last_angle_measurement_);
+
+    vio_updater_.setMeasurement(measurement);
+
+    // Process update measurement with xEKF
+    State updated_state = ekf_.processUpdateMeasurement();
+
+    // Set state timestamp to original image timestamp for ID purposes in output.
+    // We don't do that if that state is invalid, since the timestamp also carries
+    // the invalid signature.
+    if(updated_state.getTime() != kInvalid)
+      updated_state.setTime(t1);
+
+    event_img = vio_updater_.getFeatureImage();
+
+    return updated_state;
+
+  }
+
+
 
   // Return invalid state for now
   return State();
