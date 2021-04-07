@@ -21,9 +21,10 @@ namespace x {
   };
 
   struct EventArray {
-    EventArray() : height(0), width(0), events() {};
-    EventArray(uint32_t _height, uint32_t _width, std::vector<Event> _events)
-    : height(_height), width(_width), events(std::move(_events)) {};
+    EventArray() : seq(0), height(0), width(0), events() {};
+    EventArray(uint32_t _seq, uint32_t _height, uint32_t _width, std::vector<Event> _events)
+    : seq(_seq), height(_height), width(_width), events(std::move(_events)) {};
+    uint32_t seq;
     uint32_t height;
     uint32_t width;
     std::vector<Event> events;
