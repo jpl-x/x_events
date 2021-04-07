@@ -141,6 +141,7 @@ namespace x
     int n_events_min;
     int n_events_max;
     int noise_event_rate;
+    int n_events_noise_detection_min;
     double event_norm_factor;
     bool correct_event_motion;
   };
