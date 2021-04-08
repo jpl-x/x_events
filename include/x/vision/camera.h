@@ -42,8 +42,16 @@ public:
   double getInvFy() const;
   double getCxN() const;
   double getCyN() const;
-  void undistort(FeatureList& features) const;
-  void undistort(Feature& feature) const;
+
+  /**
+   * Takes pixel coordinates as input and undistorts according to the camera model,
+   * writing them as output on the second argument.
+   * @param input
+   * @param undistorted_output
+   */
+  void undistort(const cv::Point2d &input, cv::Point2d &undistorted_output) const;
+  void undistortFeature(Feature& feature) const;
+  void undistortFeatures(FeatureList& features) const;
   // Returns image coordinates in normal plane
   Feature normalize(const Feature& feature) const;
   Track normalize(const Track& track, const size_t max_size = 0) const;

@@ -75,17 +75,9 @@ double Camera::getCyN() const
   return cy_n_;
 }
 
-void Camera::undistort(FeatureList& features) const
-{
-  // Undistort each point in the input vector
-  for(auto & feature : features)
-    undistort(feature);
-}
-
-void Camera::undistort(Feature& feature) const
-{
-  const double cam_dist_x = feature.getXDist() * inv_fx_ - cx_n_;
-  const double cam_dist_y = feature.getYDist() * inv_fy_ - cy_n_;
+void Camera::undistort(const cv::Point2d &input, cv::Point2d &undistorted_output) const {
+  const double cam_dist_x = input.x * inv_fx_ - cx_n_;
+  const double cam_dist_y = input.y * inv_fy_ - cy_n_;
 
   const double dist_r = sqrt(cam_dist_x * cam_dist_x + cam_dist_y * cam_dist_y);
 
@@ -131,8 +123,26 @@ void Camera::undistort(Feature& feature) const
     }
   }
 
-  feature.setX(xn * fx_ + cx_);
-  feature.setY(yn * fy_ + cy_);
+  undistorted_output.x = xn * fx_ + cx_;
+  undistorted_output.y = yn * fy_ + cy_;
+}
+
+void Camera::undistortFeatures(FeatureList& features) const
+{
+  // Undistort each point in the input vector
+  for(auto & feature : features)
+    undistortFeature(feature);
+}
+
+void Camera::undistortFeature(Feature& feature) const
+{
+  // this will be simplified as soon as we start saving x, y as cv::Point2d in feature
+  cv::Point2d input, output;
+  input.x = feature.getXDist();
+  input.y = feature.getYDist();
+  undistort(input, output);
+  feature.setX(output.x);
+  feature.setY(output.y);
 }
 
 Feature Camera::normalize(const Feature& feature) const
