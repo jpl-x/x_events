@@ -295,15 +295,10 @@ State VIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr,
         dt = static_cast<float>(t1 - e->ts) / (t1 - t0);
       }
 
-      // Scope start
       Eigen::Vector4d f;
-      f << e->x, e->y, 1.0, params_.rho_0;
-      //Eigen::Vector4d f; //TODO(frockenb): Compute look up table and add proper depth
-      //f.head<2>() = rig_->dvs_keypoint_lut_.col(e->x + e->y * width);
-      //f[2] = 1.;
-      //f[3] = 1./depth;
-
-      // Scope end
+      f.head<2>() = camera_.getKeypoint(e->x + e->y * params_.event_img_width);
+      f[2] = 1.0;
+      f[3] = params_.rho_0; //TODO(frockenb): Add proper depth
 
       if (params_.correct_event_motion)
       {
