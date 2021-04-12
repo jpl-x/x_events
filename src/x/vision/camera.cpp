@@ -78,6 +78,16 @@ double Camera::getCyN() const
   return cy_n_;
 }
 
+Eigen::Vector4d Camera::getBearing(unsigned int index) const
+{
+  return bearing_lut_.col(index);
+}
+
+Eigen::Vector2d Camera::getKeypoint(unsigned int index) const
+{
+  return keypoint_lut_.col(index);
+}
+
 void Camera::undistort(const cv::Point2d &input, cv::Point2d &undistorted_output) const {
   const double cam_dist_x = input.x * inv_fx_ - cx_n_;
   const double cam_dist_y = input.y * inv_fy_ - cy_n_;
