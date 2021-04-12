@@ -43,6 +43,9 @@ public:
   double getCxN() const;
   double getCyN() const;
 
+  Eigen::Vector4d getBearing(unsigned int index) const;
+  Eigen::Vector2d getKeypoint(unsigned int index) const;
+
   /**
    * Takes pixel coordinates as input and undistorts according to the camera model,
    * writing them as output on the second argument.
