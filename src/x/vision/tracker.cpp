@@ -115,7 +115,7 @@ void Tracker::track(TiledImage& current_img,
     featureDetection(current_img, current_features, timestamp, frame_number, old_features);
 
     // Undistortion of current features
-    camera_.undistort(current_features);
+    camera_.undistortFeatures(current_features);
 
     #ifdef TIMING
     clock3 = clock();
@@ -185,11 +185,11 @@ void Tracker::track(TiledImage& current_img,
     #endif
 
     // Undistortion of current features
-    camera_.undistort(current_features);
+    camera_.undistortFeatures(current_features);
 
     // Undistort features in the previous image
     // TODO(jeff) only do it for new features newly detected
-    camera_.undistort(previous_features_);
+    camera_.undistortFeatures(previous_features_);
 
     //==========================================================================
     // Outlier removal

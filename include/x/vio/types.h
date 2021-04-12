@@ -30,6 +30,14 @@
 namespace x
 {
   /**
+   * Enum carrying camera distortion model to use. X default is FOV
+   */
+  enum class DistortionModel : char {
+    FOV,
+    RADIAL_TANGENTIAL,
+  };
+
+  /**
    * User-defined parameters
    */
   struct Params
@@ -43,7 +51,17 @@ namespace x
     double cam_fy;
     double cam_cx;
     double cam_cy;
-    double cam_s;
+
+    /**
+     * Defines which distortion model to use, parameter vector needs to be filled accordingly.
+     * Default is FOV
+     */
+
+    DistortionModel cam_distortion_model = DistortionModel::FOV;
+    /**
+     * Contains as many parameters as the distortion model requires
+     */
+    std::vector<double> cam_distortion_parameters;
     int img_height;
     int img_width;
     Vector3 p_ic;

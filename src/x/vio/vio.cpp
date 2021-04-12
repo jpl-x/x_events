@@ -55,8 +55,8 @@ bool VIO::isInitialized() const {
 }
 
 void VIO::setUp(const x::Params& params) {
-  const x::Camera cam(params.cam_fx, params.cam_fy, params.cam_cx, params.cam_cy, params.cam_s, params.img_width,
-                            params.img_height);
+  const x::Camera cam(params.cam_fx, params.cam_fy, params.cam_cx, params.cam_cy, params.cam_distortion_model,
+                      params.cam_distortion_parameters, params.img_width, params.img_height);
   const x::Tracker tracker(cam, params.fast_detection_delta, params.non_max_supp, params.block_half_length,
                                  params.margin, params.n_feat_min, params.outlier_method, params.outlier_param1,
                                  params.outlier_param2);
@@ -177,7 +177,7 @@ State VIO::processMatchesMeasurement(double timestamp,
   x::Feature lrf_img_pt;
   lrf_img_pt.setXDist(320.5);
   lrf_img_pt.setYDist(240.5);
-  camera_.undistort(lrf_img_pt);
+  camera_.undistortFeature(lrf_img_pt);
   last_range_measurement_.img_pt = lrf_img_pt; 
   last_range_measurement_.img_pt_n = camera_.normalize(lrf_img_pt);
 
@@ -535,11 +535,11 @@ x::MatchList VIO::importMatches(const std::vector<double>& match_vector,
     // Features and match initializations
     x::Feature previous_feature(match_vector[9 * i] + params_.time_offset, seq - 1, 0.0, 0.0, x_dist_prev,
                                       y_dist_prev);
-    camera_.undistort(previous_feature);
+    camera_.undistortFeature(previous_feature);
 
     x::Feature current_feature(match_vector[9 * i + 3] + params_.time_offset, seq, 0.0, 0.0, x_dist_curr,
                                      y_dist_curr);
-    camera_.undistort(current_feature);
+    camera_.undistortFeature(current_feature);
 
     x::Match current_match;
     current_match.previous = previous_feature;

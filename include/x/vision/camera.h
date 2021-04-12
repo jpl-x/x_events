@@ -19,6 +19,7 @@
 
 #include <x/vision/types.h>
 #include <x/vision/track.h>
+#include <x/vio/types.h>
 #include "opencv2/highgui/highgui.hpp"
 
 namespace x
@@ -31,7 +32,8 @@ public:
          double fy,
          double cx,
          double cy,
-         double s,
+         DistortionModel distortion_model,
+         std::vector<double> distortion_parameters,
          unsigned int img_width,
          unsigned int img_height);
   unsigned int getWidth() const;
@@ -40,18 +42,40 @@ public:
   double getInvFy() const;
   double getCxN() const;
   double getCyN() const;
-  void undistort(FeatureList& features) const;
-  void undistort(Feature& feature) const;
+
+  /**
+   * Takes pixel coordinates as input and undistorts according to the camera model,
+   * writing them as output on the second argument.
+   * @param input
+   * @param undistorted_output
+   */
+  void undistort(const cv::Point2d &input, cv::Point2d &undistorted_output) const;
+  void undistortFeature(Feature& feature) const;
+  void undistortFeatures(FeatureList& features) const;
   // Returns image coordinates in normal plane
   Feature normalize(const Feature& feature) const;
   Track normalize(const Track& track, const size_t max_size = 0) const;
   TrackList normalize(const TrackList& tracks, const size_t max_size = 0) const;
+
+  cv::Point2d project(const Eigen::Vector3d& bearing) const;
+  Eigen::Vector3d backProject(const cv::Point2d& keypoint) const;
+
+  void pinholeProject(Eigen::Vector2d& px) const;
+  void pinholeProject(cv::Point2d& px) const;
+
+  void pinholeBackProject(cv::Point2d& px) const;
+  void pinholeBackProject(Eigen::Vector2d& px) const;
+  void pinholeBackProject(Eigen::Vector3d& bearing) const;
+
+  void distort(const cv::Point2d &input, cv::Point2d &distorted_output) const;
+
 private:
   double fx_ = 0.0; // Focal length
   double fy_ = 0.0;
   double cx_ = 0.0; // Principal point
   double cy_ = 0.0;
-  double s_ = 0.0;  // Distortion
+  DistortionModel distortion_model_ = DistortionModel::FOV;
+  std::vector<double> distortion_parameters_ = {0.0};
   unsigned int img_width_ = 0.0;
   unsigned int img_height_ = 0.0;
   // Distortion terms we only want to compute once
@@ -59,9 +83,12 @@ private:
   double inv_fy_ = -1;
   double cx_n_   = -1; // Principal point in normalized coordinates
   double cy_n_   = -1;
-  double s_term_ = -1; // Distortion term
-  // Inverse FOV distortion transformation
-  double inverseTf(const double dist) const;
+
+  void calculateBearingLUT();
+  void calculateKeypointLUT();
+
+  Eigen::Matrix<double, 4, Eigen::Dynamic> bearing_lut_;
+  Eigen::Matrix<double, 2, Eigen::Dynamic> keypoint_lut_;
 };
 }
 
