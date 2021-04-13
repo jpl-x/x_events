@@ -43,8 +43,8 @@ public:
   double getCxN() const;
   double getCyN() const;
 
-  Eigen::Vector4d getBearing(unsigned int index) const;
-  Eigen::Vector2d getKeypoint(unsigned int index) const;
+  inline Eigen::Vector4d getBearing(unsigned int index) const {return bearing_lut_.col(index);};
+  inline Eigen::Vector2d getKeypoint(unsigned int index) const {return keypoint_lut_.col(index);};
 
   /**
    * Takes pixel coordinates as input and undistorts according to the camera model,

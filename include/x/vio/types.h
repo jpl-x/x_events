@@ -149,7 +149,8 @@ namespace x
     double event_cam_fy;
     double event_cam_cx;
     double event_cam_cy;
-    double event_cam_s;
+    DistortionModel event_cam_distortion_model = DistortionModel::FOV;
+    std::vector<double> event_cam_distortion_parameters;
     int event_img_height;
     int event_img_width;
     Vector3 p_ec;

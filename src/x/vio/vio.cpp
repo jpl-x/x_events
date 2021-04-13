@@ -288,7 +288,7 @@ State VIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr,
 
     double dt = 0.0;
     size_t event_counter = 0;
-    for(auto e = events_ptr->events.begin() + (first_event_idx - 1); e != events_ptr->events.end(); ++e)
+    for(auto e = events_ptr->events.begin() + first_event_idx; e != events_ptr->events.end(); ++e)
     {
       if (event_counter % 10 == 0)
       {
