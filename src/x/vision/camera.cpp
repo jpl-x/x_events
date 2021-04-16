@@ -106,17 +106,63 @@ void Camera::undistort(const cv::Point2d &input, cv::Point2d &undistorted_output
       // Split out parameters for easier reading
       const double& k1 = distortion_parameters_[0];
       const double& k2 = distortion_parameters_[1];
-      const double& k3 = distortion_parameters_[4];
+//      const double& k3 = distortion_parameters_[4];
       const double& p1 = distortion_parameters_[2];
       const double& p2 = distortion_parameters_[3];
 
-      // Undistort
-      const double r2 = cam_dist_x * cam_dist_x + cam_dist_y * cam_dist_y;
-      const double r4 = r2 * r2;
-      const double r6 = r4 * r2;
-      const double kr = (1.0 + k1 * r2 + k2 * r4 + k3 * r6);
-      xn = cam_dist_x * kr + 2.0 * p1 * cam_dist_x * cam_dist_y + p2 * (r2 + 2.0 * cam_dist_x * cam_dist_x);
-      yn = cam_dist_y * kr + 2.0 * p2 * cam_dist_x * cam_dist_y + p1 * (r2 + 2.0 * cam_dist_y * cam_dist_y);
+      xn = cam_dist_x;
+      yn = cam_dist_y;
+
+      // See https://github1s.com/uzh-rpg/ze_oss/blob/HEAD/ze_cameras/include/ze/cameras/camera_models.hpp
+
+      // do at most 30 iterations
+      for(int i = 0; i < 30; ++i)
+      {
+        // distort x and y
+        double x = xn;
+        double y = yn;
+
+        const double r2 = x * x + y * y;
+
+        const double xy = x * y;
+        const double cdist = (k1 + k2 * r2) * r2;
+
+        x += (x * cdist + p1 * 2.0 * xy + p2 * (r2 + 2.0 * x * x));
+        y += (y * cdist + p2 * 2.0 * xy + p1 * (r2 + 2.0 * y * y));
+
+        // reprojection error: distorted xn --> x SHOULD BE EQUAL TO distorted x
+        const double e_u = cam_dist_x - x;
+        const double e_v = cam_dist_y - y;
+
+        // calculate jacobian (a = J_00, b = J_10, d = J_11) and  J_10 = J_01
+        const double k2_r2_x4 = k2 * r2 * 4.0;
+        const double cdist_p1 = cdist + 1.0;
+        double a = cdist_p1 + k1 * 2.0 * x * x + k2_r2_x4 * x * x + 2.0 * p1 * y + 6.0 * p2 * x;
+        double b = 2.0 * k1 * xy + k2_r2_x4 * xy + 2.0 * p1 * x + 2.0 * p2 * y;
+        double d = cdist_p1 + k1 * 2.0 * y * y + k2_r2_x4 * y * y + 2.0 * p2 * x + 6.0 * p1 * y;
+
+        // direct gauss newton step
+        const double a_sqr = a * a;
+        const double b_sqr = b * b;
+        const double d_sqr = d * d;
+        const double abbd = a * b + b * d;
+        const double abbd_sqr = abbd * abbd;
+        const double a2b2 = a_sqr + b_sqr;
+        const double a2b2_inv = 1.0/a2b2;
+        const double adabdb = a_sqr * d_sqr - 2 * a * b_sqr * d + b_sqr * b_sqr;
+        const double adabdb_inv = 1.0 / adabdb;
+        const double c1 = abbd * adabdb_inv;
+
+        xn += e_u * (a * (abbd_sqr * a2b2_inv * adabdb_inv + a2b2_inv) - b * c1) + e_v * (b * (abbd_sqr * a2b2_inv * adabdb_inv + a2b2_inv) - d * c1);
+        yn += e_u * (-a * c1 + b * a2b2 * adabdb_inv) + e_v * (-b * c1 + d * a2b2 * adabdb_inv);
+
+        // stop if reprojection error is small enough
+        if ((e_u * e_u + e_v * e_v) < 1e-8)
+        {
+          break;
+        }
+      }
+
       break;
     }
     default: {
