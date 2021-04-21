@@ -6,6 +6,7 @@
 #include <deque>
 #include <mutex>
 #include <fstream>
+#include <x/vision/camera.h>
 
 #include "patch.h"
 #include "optimizer.h"
@@ -21,7 +22,8 @@ namespace x {
  */
   class EkltTracker {
   public:
-    explicit EkltTracker(Viewer &viewer, EkltParams params = {}, EkltPerformanceLoggerPtr=nullptr);
+    explicit EkltTracker(Camera camera, Viewer &viewer, EkltParams params = {},
+                         EkltPerformanceLoggerPtr perf_logger = nullptr);
 
     /**
      * @brief updates the EKLT parameters in the tracker as well as in the associated viewer and optimizer
@@ -29,6 +31,13 @@ namespace x {
     void setParams(const EkltParams& params);
 
     void setPerfLogger(const EkltPerformanceLoggerPtr& perf_logger);
+
+    void setCamera(const x::Camera& camera) {
+      camera_ = camera;
+      for (auto& patch : patches_) {
+        patch.camera_ptr_ = &camera_;
+      }
+    }
 
       /**
      * @brief processes all events in array and returns true if matches have been updated.
@@ -185,6 +194,7 @@ namespace x {
       events_[j + 1] = e;
     }
 
+    Camera camera_;
     EkltParams params_;
     EkltPerformanceLoggerPtr perf_logger_;
     MatchList matches_;

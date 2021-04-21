@@ -12,7 +12,7 @@
 #include <x/vision/types.h>
 
 #include <easy/profiler.h>
-
+#include <x/vision/camera.h>
 
 
 namespace x
@@ -33,7 +33,7 @@ struct Patch
    * @param half_size half size of the patch side length
    * @param t_init time stamp of the image where the corner was extracted
    */
-    Patch(const cv::Point2d& center, double t_init, const x::EkltParams& params)
+    Patch(const cv::Point2d& center, double t_init, const x::EkltParams& params, x::Camera* cam)
       : init_center_(center)
       , previous_center_(center)
       , flow_angle_(0)
@@ -45,6 +45,7 @@ struct Patch
       , color_(0, 0, 255)
       , lost_(false)
       , initialized_(false)
+      , camera_ptr_(cam)
     {
         warping_ = cv::Mat::eye(3,3,CV_64F);
 
@@ -57,7 +58,7 @@ struct Patch
     }
 
     // TODO find alternative to ros::Time::now().toSec() -- now -1
-    explicit Patch(const x::EkltParams& params) : Patch(cv::Point2f(-1,-1), -1, params)
+    explicit Patch(const x::EkltParams& params, x::Camera* cam) : Patch(cv::Point2f(-1,-1), -1, params, cam)
     {
         // contstructor for initializing lost features
         lost_ = true;
@@ -71,6 +72,8 @@ struct Patch
 //      saveCurrentInPrevious();
       m.previous = previous_feature_;
       m.current = interpolateToTime(t);
+
+      camera_ptr_->undistortFeature(m.current);
 
       previous_feature_ = m.current;
 
@@ -251,6 +254,7 @@ struct Patch
     int update_rate_;
     bool lost_;
     bool initialized_;
+    x::Camera* camera_ptr_;
 
     std::deque<x::Event> event_buffer_;
 };

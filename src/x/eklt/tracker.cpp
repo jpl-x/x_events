@@ -10,12 +10,13 @@
 
 #include <cassert>
 #include <easy/profiler.h>
+#include <x/vision/camera.h>
 
 
 using namespace x;
 
-EkltTracker::EkltTracker(Viewer &viewer, EkltParams params, EkltPerformanceLoggerPtr p_logger)
-  : params_(std::move(params)), perf_logger_(std::move(p_logger))
+EkltTracker::EkltTracker(Camera camera, Viewer &viewer, EkltParams params, EkltPerformanceLoggerPtr p_logger)
+  : camera_(std::move(camera)), params_(std::move(params)), perf_logger_(std::move(p_logger))
   , sensor_size_(0, 0), got_first_image_(false), most_current_time_(-1.0)
   , viewer_ptr_(&viewer), optimizer_(params_, perf_logger_) {
 //    event_sub_ = nh_.subscribe("events", 10, &EkltTracker::processEvents, this);
@@ -38,7 +39,7 @@ void EkltTracker::initPatches(Patches &patches, std::vector<int> &lost_indices, 
 
   // fill up patches to full capacity and set all of the filled patches to lost
   for (int i = patches.size(); i < corners; i++) {
-    patches.emplace_back(params_);
+    patches.emplace_back(params_, &camera_);
     lost_indices.push_back(i);
   }
 
@@ -294,7 +295,7 @@ void EkltTracker::extractPatches(Patches &patches, const int &num_patches, const
   << "Extracted " << features.size() << " new features on image at t=" << std::setprecision(15) << image_it->first
   << " s.";
   for (const auto & feature : features) {
-    patches.emplace_back(feature, image_it->first, params_);
+    patches.emplace_back(feature, image_it->first, params_, &camera_);
     Patch &patch = patches[patches.size() - 1];
     if (perf_logger_)
       perf_logger_->tracks_csv.addRow(profiler::now(), patch.id_, EkltTrackUpdateType::Init,

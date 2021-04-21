@@ -28,7 +28,7 @@ EKLTVIO::EKLTVIO()
   : ekf_{Ekf(vio_updater_)}
   , msckf_baseline_n_(-1.0)
   , eklt_viewer_()
-  , eklt_tracker_(eklt_viewer_){
+  , eklt_tracker_(x::Camera(), eklt_viewer_) {
 }
 
 bool EKLTVIO::isInitialized() const {
@@ -56,6 +56,7 @@ void EKLTVIO::setUp(const x::Params &params, const x::EkltParams &eklt_params,
   // sets also EKLT params in viewer and optimizer class
   eklt_tracker_.setParams(eklt_params);
   eklt_tracker_.setPerfLogger(perf_logger);
+  eklt_tracker_.setCamera(camera_);
 
   // Set up EKLTVIO state manager
   const int n_poses_state = params.n_poses_max;
