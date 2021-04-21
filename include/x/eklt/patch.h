@@ -86,8 +86,7 @@ struct Patch
         x = center_.x;
         y = center_.y;
       }
-
-      return {t_curr_, 0, x, y, x, y};
+      return {t, 0, x, y, x, y};
     }
 
     /**

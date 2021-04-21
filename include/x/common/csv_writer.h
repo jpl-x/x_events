@@ -12,6 +12,7 @@
 #include <queue>
 #include <tuple>
 #include <easy/profiler.h>
+#include <x/common/memory_monitor.h>
 
 namespace x {
 
@@ -35,6 +36,15 @@ namespace x {
     }
   }
 
+  template<class First, class... Types>
+  size_t variadic_template_size(First &&first, Types &&... values) {
+    auto size = sizeof(First);
+    if constexpr (sizeof...(Types) > 0) {
+      size += x::variadic_template_size(values...);
+    }
+    return size;
+  }
+
   /**
    * High performance scientific CSV writer.
    * Provides a type-safe way to write CSV files through a templated addRow() method. These are written into a
@@ -49,7 +59,7 @@ namespace x {
    */
 
   template<class ... Types>
-  class CsvWriter {
+  class CsvWriter : DebugMemory {
   public:
     /**
      * Opens the passed 'filename' as file in write mode and writes the provided column names in the constructor
@@ -58,6 +68,8 @@ namespace x {
      * @param column_names e.g. { "col1", "col2" }
      */
     CsvWriter(const std::string& filename, std::array<std::string, sizeof...(Types)> column_names);
+
+    size_t memory_usage_in_bytes() const override;
 
     /**
      * Writes the buffer in CSV-format to the open file.
@@ -81,7 +93,7 @@ namespace x {
       buffer_.emplace(values...);
     }
 
-    ~CsvWriter() {
+    ~CsvWriter() override {
       flush();
       outfile_.close();
     }
@@ -92,7 +104,8 @@ namespace x {
   };
 
   template<class... Types>
-  CsvWriter<Types...>::CsvWriter(const std::string &filename, std::array<std::string, sizeof...(Types)> column_names) {
+  CsvWriter<Types...>::CsvWriter(const std::string &filename, std::array<std::string, sizeof...(Types)> column_names)
+    : DebugMemory() {
     outfile_.open(filename);
 
     // use double output precision
@@ -105,6 +118,16 @@ namespace x {
       outfile_ << *it << ";";
     }
     outfile_ << *it << std::endl;
+  }
+
+  template<class... Types>
+  size_t CsvWriter<Types...>::memory_usage_in_bytes() const {
+    if (!buffer_.empty()) {
+      auto lambda_expr = [=](auto &&... args) -> size_t { return x::variadic_template_size(args...); };
+
+      return buffer_.size() * lambda_expr(buffer_.front());
+    }
+    return 0;
   }
 
 }

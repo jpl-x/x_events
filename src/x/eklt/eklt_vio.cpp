@@ -35,7 +35,8 @@ bool EKLTVIO::isInitialized() const {
   return initialized_;
 }
 
-void EKLTVIO::setUp(const x::Params &params, const x::EkltParams &eklt_params, const EkltPerformanceLoggerPtr& perf_logger) {
+void EKLTVIO::setUp(const x::Params &params, const x::EkltParams &eklt_params,
+                    const XVioPerformanceLoggerPtr& xvio_perf_logger, const EkltPerformanceLoggerPtr& perf_logger) {
   const x::Camera cam(params.cam_fx, params.cam_fy, params.cam_cx, params.cam_cy, params.cam_distortion_model,
                       params.cam_distortion_parameters, params.img_width, params.img_height);
   const x::Tracker tracker(cam, params.fast_detection_delta, params.non_max_supp, params.block_half_length,
@@ -46,7 +47,7 @@ void EKLTVIO::setUp(const x::Params &params, const x::EkltParams &eklt_params, c
   msckf_baseline_n_ = params.msckf_baseline / (params.img_width * params.cam_fx);
 
   // Set up tracker and track manager
-  const TrackManager track_manager(cam, msckf_baseline_n_);
+  const TrackManager track_manager(cam, msckf_baseline_n_, xvio_perf_logger);
   params_ = params;
   camera_ = cam;
   tracker_ = tracker;

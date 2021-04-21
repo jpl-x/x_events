@@ -89,6 +89,8 @@ Eigen::Vector2d Camera::getKeypoint(unsigned int index) const
 }
 
 void Camera::undistort(const cv::Point2d &input, cv::Point2d &undistorted_output) const {
+  EASY_FUNCTION();
+
   const double cam_dist_x = input.x * inv_fx_ - cx_n_;
   const double cam_dist_y = input.y * inv_fy_ - cy_n_;
 

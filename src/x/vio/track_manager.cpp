@@ -18,13 +18,16 @@
 #include <x/vio/tools.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <utility>
 
 using namespace x;
 
-TrackManager::TrackManager() {}
+TrackManager::TrackManager(XVioPerformanceLoggerPtr xvio_perf_logger)
+  : p_perf_logger_(std::move(xvio_perf_logger)){}
 
-TrackManager::TrackManager(const Camera &camera, const double min_baseline_n)
-  : camera_(camera), min_baseline_n_(min_baseline_n) {}
+TrackManager::TrackManager(const Camera &camera, const double min_baseline_n, XVioPerformanceLoggerPtr xvio_perf_logger)
+  : p_perf_logger_(std::move(xvio_perf_logger))
+  , camera_(camera), min_baseline_n_(min_baseline_n) {}
 
 void TrackManager::setCamera(Camera camera) {
   camera_ = camera;
@@ -565,6 +568,9 @@ void TrackManager::plotFeatures(TiledImage &img,
                        std::to_string(msckf_trks_n_.size());
   std::string potStr = std::string(" Pot: ") +
                        std::to_string(count_pot);
+
+  if (p_perf_logger_)
+    p_perf_logger_->features_csv.addRow(profiler::now(), n_slam + n_new_slam, msckf_trks_n_.size(), count_opp, count_pot);
 
   const double scale = .7;
   cv::putText(img, slam_str, cv::Point((int) 10, (int) camera_.getHeight() - 10), cv::FONT_HERSHEY_PLAIN,

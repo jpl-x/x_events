@@ -23,12 +23,28 @@
 
 #include <vector>
 #include <Eigen/Dense>
+#include <easy/profiler.h>
+#include <x/common/csv_writer.h>
+#include <filesystem>
 
 /**
  * This header defines common types used in xVIO.
  */
 namespace x
 {
+  using FeaturesCsv = CsvWriter<profiler::timestamp_t, size_t, size_t, size_t, size_t>;
+
+
+  struct XVioPerformanceLogger {
+
+    explicit XVioPerformanceLogger(const std::filesystem::path & path)
+     : features_csv(path / "features.csv", {"ts", "num_slam_features", "num_msckf_features",
+                                            "num_opportunistic_features", "num_potential_features"}) {}
+
+    FeaturesCsv features_csv;
+  };
+
+  typedef std::shared_ptr<XVioPerformanceLogger> XVioPerformanceLoggerPtr;
   /**
    * Enum carrying camera distortion model to use. X default is FOV
    */
@@ -56,8 +72,8 @@ namespace x
      * Defines which distortion model to use, parameter vector needs to be filled accordingly.
      * Default is FOV
      */
-
     DistortionModel cam_distortion_model = DistortionModel::FOV;
+
     /**
      * Contains as many parameters as the distortion model requires
      */

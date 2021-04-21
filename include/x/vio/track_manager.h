@@ -33,8 +33,8 @@ namespace x {
   class TrackManager
   {
     public:
-      TrackManager();
-      TrackManager(const Camera& camera, const double min_baseline_n);
+      TrackManager(XVioPerformanceLoggerPtr xvio_perf_logger = nullptr);
+      TrackManager(const Camera& camera, const double min_baseline_n, XVioPerformanceLoggerPtr xvio_perf_logger = nullptr);
       void setCamera(Camera camera);
 
       // All track getters are in normalized image coordinates
@@ -88,6 +88,7 @@ namespace x {
       std::vector<int> featureTriangleAtPoint(const Feature& lrf_img_pt, TiledImage& img) const;
       void draw_delaunay(cv::Mat& img, cv::Subdiv2D& subdiv, cv::Scalar delaunay_color) const;
     private:
+      XVioPerformanceLoggerPtr p_perf_logger_;
       Camera camera_;
       TrackList slam_trks_;    // persistent feature tracks (excluding new ones)
       // New SLAM tracks (both semi-infinite depths uncertainty and MSCKF)

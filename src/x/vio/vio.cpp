@@ -57,7 +57,7 @@ bool VIO::isInitialized() const {
   return ekf_.getInitStatus() == InitStatus::kInitialized;
 }
 
-void VIO::setUp(const x::Params& params) {
+void VIO::setUp(const x::Params& params, const XVioPerformanceLoggerPtr& xvio_perf_logger) {
   const x::Camera cam(params.cam_fx, params.cam_fy, params.cam_cx, params.cam_cy, params.cam_distortion_model,
                       params.cam_distortion_parameters, params.img_width, params.img_height);
   const x::Tracker tracker(cam, params.fast_detection_delta, params.non_max_supp, params.block_half_length,
@@ -68,7 +68,7 @@ void VIO::setUp(const x::Params& params) {
   msckf_baseline_n_ = params.msckf_baseline / (params.img_width * params.cam_fx);
 
   // Set up tracker and track manager
-  const TrackManager track_manager(cam, msckf_baseline_n_);
+  const TrackManager track_manager(cam, msckf_baseline_n_, xvio_perf_logger);
   params_ = params;
   camera_ = cam;
   tracker_ = tracker;
@@ -131,7 +131,6 @@ State VIO::processImageMeasurement(double timestamp,
                                    const unsigned int seq,
                                    TiledImage& match_img,
                                    TiledImage& feature_img) {
-  EASY_FUNCTION();
   // Time correction
   const double timestamp_corrected = timestamp + params_.time_offset;
 
@@ -346,7 +345,6 @@ State VIO::processImu(const double timestamp,
                       const unsigned int seq,
                       const Vector3& w_m,
                       const Vector3& a_m) {
-  EASY_FUNCTION();
   return ekf_.processImu(timestamp, seq, w_m, a_m);
 }
 

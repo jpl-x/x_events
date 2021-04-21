@@ -37,7 +37,7 @@ namespace x {
     public:
       VIO();
       bool isInitialized() const;
-      void setUp(const Params& params);
+      void setUp(const Params& params, const XVioPerformanceLoggerPtr& xvio_perf_logger = nullptr);
       void setLastRangeMeasurement(RangeMeasurement range_measurement);
       void setLastSunAngleMeasurement(SunAngleMeasurement angle_measurement);
       void initAtTime(double now);
