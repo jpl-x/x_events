@@ -47,12 +47,22 @@ find_package(OpenCV 4 QUIET)
 if(NOT ${OpenCV_FOUND})
   find_package(OpenCV 3.3.1 QUIET)
   if(NOT ${OpenCV_FOUND})
-    message(FATAL_ERROR "OpenCV >= 3.3.1 required.")
+    # OpenCV: fallback to opencv3_catkin ros package
+    find_package(opencv3_catkin QUIET)
+    if(opencv3_catkin_FOUND)
+      message("OpenCV3_catkin detected")
+      set(OPENCV_PACKAGE "opencv3_catkin")
+      set(OpenCV_INCLUDE_DIRS "")
+      set(OpenCV_LIBRARIES "")
+    else()
+      message(FATAL_ERROR "No OpenCV >= 3.3.1 or 4 detected.")
+    endif()
   endif()
 endif()
 
 find_package(catkin REQUIRED COMPONENTS
   cmake_modules
+  ${OPENCV_PACKAGE}
   ceres_catkin
   eigen_catkin
   glog_catkin
