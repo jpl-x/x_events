@@ -114,6 +114,7 @@ State EKLTVIO::processImageMeasurement(double timestamp,
                                        const unsigned int seq,
                                        TiledImage &match_img,
                                        TiledImage &feature_img) {
+//  std::cout << "Image update at: " << std::setprecision(17) << timestamp << std::endl;
   // Time correction
   const double timestamp_corrected = timestamp + params_.time_offset;
 
@@ -160,8 +161,8 @@ State EKLTVIO::processImageMeasurement(double timestamp,
 
 
 State EKLTVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr, TiledImage &tracker_img, TiledImage &feature_img) {
-//  std::cout << "Events at timestamp " << events_ptr->events.front().ts
-//            << " received in xEKLTVIO class." << std::endl;
+//  std::cout << "Events at timestamps [" << std::setprecision(17) << events_ptr->events.front().ts << ", " << events_ptr->events.back().ts
+//            << "] received in xEKLTVIO class." << std::endl;
 
   bool matches_have_changed = eklt_tracker_.processEvents(events_ptr);
 
@@ -311,5 +312,6 @@ State EKLTVIO::processImu(const double timestamp,
                           const unsigned int seq,
                           const Vector3 &w_m,
                           const Vector3 &a_m) {
+//  std::cout << "IMU update at: " << std::setprecision(17) << timestamp << std::endl;
   return ekf_.processImu(timestamp, seq, w_m, a_m);
 }

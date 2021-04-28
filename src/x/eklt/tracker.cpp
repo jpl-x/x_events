@@ -395,7 +395,7 @@ bool EkltTracker::processEvents(const EventArray::ConstPtr &msg) {
     if (ev.ts >= most_current_time_)
       most_current_time_ = ev.ts;
     else if (fabs(ev.ts - most_current_time_) > 1e-6)  // if order wrong and spaced more than 1us
-      LOG(WARNING) << "Processing event behind most current time: " << ev.ts << " < " << most_current_time_ << ". Events might not be in order!";
+      LOG(WARNING) << "Processing event behind most current time: " << std::setprecision(15) << ev.ts << " < " << most_current_time_ << ". Events might not be in order!";
 
     int num_features_tracked = patches_.size();
     // go through each patch and update the event frame with the new event
