@@ -171,9 +171,10 @@ State EKLTVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_pt
 
   auto match_img = eklt_tracker_.getCurrentImage().clone();
 
-  VioMeasurement measurement(events_ptr->events.back().ts,
+  const MatchList &matches = eklt_tracker_.getMatches();
+  VioMeasurement measurement(matches.back().current.getTimestamp(),
                              seq++,
-                             eklt_tracker_.getMatches(),
+                             matches,
                              match_img,
                              last_range_measurement_,
                              last_angle_measurement_);

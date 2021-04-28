@@ -429,7 +429,7 @@ bool EkltTracker::processEvents(const EventArray::ConstPtr &msg) {
   if (match_list_needs_update) {
     this->updateMatchListFromPatches();
   }
-  return match_list_needs_update;
+  return match_list_needs_update && !matches_.empty();
 }
 
 void EkltTracker::processImage(double timestamp, TiledImage &current_img, unsigned int frame_number) {
@@ -455,10 +455,22 @@ const MatchList &EkltTracker::getMatches() const {
 }
 
 void EkltTracker::updateMatchListFromPatches() {
-  matches_.clear();
+  EASY_FUNCTION();
+  double interpolation_time = std::numeric_limits<double>::lowest();
+//  double interpolation_time = 0.0;
+//  int N = 0;
   for (auto& p : patches_) {
     if (!p.lost_) {
-      auto match = p.consumeMatch(most_current_time_);
+      interpolation_time = std::max(interpolation_time, p.t_curr_);
+//      interpolation_time = (N * interpolation_time + p.t_curr_) / (N+1); // avg
+//      ++N;
+    }
+  }
+  matches_.clear();
+
+  for (auto& p : patches_) {
+    if (!p.lost_) {
+      auto match = p.consumeMatch(interpolation_time);
       if (isPointOutOfView(cv::Point2d(match.current.getX(), match.current.getY()))) {
         discardPatch(p);
       } else {
