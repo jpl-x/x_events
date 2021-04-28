@@ -173,7 +173,7 @@ bool EkltTracker::updatePatch(Patch &patch, const Event &event) {
 
   if (perf_logger_)
     perf_logger_->tracks_csv.addRow(profiler::now(), patch.id_, EkltTrackUpdateType::Update,
-                                    patch.t_curr_, patch.center_.x, patch.center_.y);
+                                    patch.t_curr_, patch.center_.x, patch.center_.y, patch.flow_angle_);
 
   setBatchSize(patch, patch_gradients_[&patch - &patches_[0]].first, patch_gradients_[&patch - &patches_[0]].second,
                params_.displacement_px);
@@ -299,7 +299,7 @@ void EkltTracker::extractPatches(Patches &patches, const int &num_patches, const
     Patch &patch = patches[patches.size() - 1];
     if (perf_logger_)
       perf_logger_->tracks_csv.addRow(profiler::now(), patch.id_, EkltTrackUpdateType::Init,
-                                      patch.t_curr_, patch.center_.x, patch.center_.y);
+                                      patch.t_curr_, patch.center_.x, patch.center_.y, patch.flow_angle_);
   }
 }
 
@@ -334,7 +334,7 @@ void EkltTracker::bootstrapFeatureKLT(Patch &patch, const cv::Mat &last_image, c
     patch.initialized_ = true;
     if (perf_logger_)
       perf_logger_->tracks_csv.addRow(profiler::now(), patch.id_, EkltTrackUpdateType::Bootstrap,
-                                      patch.t_curr_, patch.center_.x, patch.center_.y);
+                                      patch.t_curr_, patch.center_.x, patch.center_.y, patch.flow_angle_);
   }
 }
 

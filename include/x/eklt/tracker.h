@@ -241,7 +241,7 @@ namespace x {
 
       if (perf_logger_)
         perf_logger_->tracks_csv.addRow(profiler::now(), patch.id_, EkltTrackUpdateType::Lost,
-                                        patch.t_curr_, patch.center_.x, patch.center_.y);
+                                        patch.t_curr_, patch.center_.x, patch.center_.y, patch.flow_angle_);
     }
   };
 

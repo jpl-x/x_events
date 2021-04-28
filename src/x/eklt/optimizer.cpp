@@ -119,7 +119,7 @@ void Optimizer::optimizeParameters(const cv::Mat &event_frame, Patch &patch, dou
   patch.updateCenter(t);
 
   if (perf_logger_)
-    perf_logger_->optimizations_csv.addRow(start, profiler::now(), summary.iterations.size());
+    perf_logger_->optimizations_csv.addRow(start, profiler::now(), summary.iterations.size(), summary.final_cost);
 }
 
 void Optimizer::setPerfLogger(const EkltPerformanceLoggerPtr &perf_logger) {
