@@ -16,6 +16,7 @@
 
 #include <x/vision/tracker.h>
 #include <x/vision/timing.h>
+#include <x/vision/utils.h>
 
 #include <math.h>
 #include <iostream>
@@ -212,13 +213,7 @@ void Tracker::track(TiledImage& current_img,
         pts2[i].y = current_features[i].getY();
       }
 
-      std::vector<uchar> mask;
-      cv::findFundamentalMat(pts1,
-                             pts2,
-                             outlier_method_,
-                             outlier_param1_,
-                             outlier_param2_,
-                             mask);
+      std::vector<uchar> mask = detectOutliers(pts1, pts2, outlier_method_, outlier_param1_, outlier_param2_);
       /*cv::findHomography(pts1,
                            current_features,
                            outlier_method_,
