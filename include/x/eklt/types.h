@@ -21,9 +21,9 @@ namespace x {
     Update,
     Lost
   };
-}
 
-std::ostream& operator << (std::ostream& os, const x::EkltTrackUpdateType& obj);
+  std::ostream& operator << (std::ostream& os, const x::EkltTrackUpdateType& obj);
+}
 
 namespace x {
 

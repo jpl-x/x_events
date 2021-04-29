@@ -5,7 +5,9 @@
 #include <x/eklt/types.h>
 
 
-std::ostream& operator << (std::ostream& os, const x::EkltTrackUpdateType& obj)
+using namespace x;
+
+std::ostream& x::operator << (std::ostream& os, const x::EkltTrackUpdateType& obj)
 {
   switch (obj) {
     case x::EkltTrackUpdateType::Init:
