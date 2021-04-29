@@ -11,6 +11,7 @@
 #include <cassert>
 #include <easy/profiler.h>
 #include <x/vision/camera.h>
+#include <x/vision/utils.h>
 
 
 using namespace x;
@@ -478,6 +479,36 @@ void EkltTracker::updateMatchListFromPatches() {
       }
     }
   }
+
+  // remove outliers if necessary
+
+  if (matches_.empty() || !params_.enable_outlier_removal)
+    return;
+
+  std::vector<cv::Point2f> pts1, pts2;
+  pts1.reserve(matches_.size());
+  pts2.reserve(matches_.size());
+
+  for (const auto& m : matches_) {
+    pts1.emplace_back(m.previous.getX(), m.previous.getY());
+    pts2.emplace_back(m.current.getX(), m.current.getY());
+  }
+
+  auto mask = x::detectOutliers(pts1, pts2, params_.outlier_method, params_.outlier_param1, params_.outlier_param2);
+
+  MatchList matches_refined;
+  matches_refined.reserve(matches_.size()); // prepare for best case
+
+  auto m_it = matches_.cbegin();
+
+  for (const auto& m : mask) {
+    if (m) {
+      matches_refined.push_back(*m_it);
+    }
+    ++m_it;
+  }
+
+  std::swap(matches_, matches_refined);
 }
 
 void EkltTracker::renderVisualization(TiledImage &tracker_debug_image_output) {

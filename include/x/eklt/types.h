@@ -78,6 +78,11 @@ namespace x {
     bool display_features = true; // Whether or not to display feature tracks
     bool display_feature_id = false; // Whether or not to display feature ids
     bool display_feature_patches = false; // Whether or not to display feature patches
+
+    bool enable_outlier_removal = false; // Whether or not to remove outliers with the same method as xVIO
+    int outlier_method = 8; // same as xVIO: 4 for LMEDS, 8 for RANSAC
+    double outlier_param1 = 1; // same as xVIO: maximum distance from a non-outlier to an epipolar line in pixels
+    double outlier_param2 = 0.99; // same as xVIO: desirable level of confidence e.g. 0.99
   };
 
   struct Patch; //forward decl
