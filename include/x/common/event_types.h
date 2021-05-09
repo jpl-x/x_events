@@ -7,6 +7,7 @@
 
 #include <utility>
 #include <vector>
+#include <boost/circular_buffer.hpp>
 
 namespace x {
   struct Event {
@@ -32,4 +33,6 @@ namespace x {
     typedef std::shared_ptr< ::x::EventArray> Ptr;
     typedef std::shared_ptr< ::x::EventArray const> ConstPtr;
   };
+
+  typedef boost::circular_buffer<Event> EventBuffer;
 }

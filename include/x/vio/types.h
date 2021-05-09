@@ -157,6 +157,8 @@ namespace x
     Quaternion q_ec;
     double event_cam_time_offset;
 
+    int event_accumulation_method;
+    double event_accumulation_period;
     int n_events_min;
     int n_events_max;
     int noise_event_rate;

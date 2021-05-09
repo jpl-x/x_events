@@ -123,7 +123,8 @@ set (SOURCE
   src/x/vision/tracker.cpp
   src/x/vision/triangulation.cpp
 
-)
+  src/x/events/e_vio.cpp
+  src/x/events/event_accumulator.cpp)
 
 add_library (x ${SOURCE})
 
