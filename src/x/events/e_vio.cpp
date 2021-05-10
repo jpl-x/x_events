@@ -51,10 +51,10 @@ EVIO::EVIO()
 }
 
 bool EVIO::isInitialized() const {
-  return initialized_;
+  return ekf_.getInitStatus() == InitStatus::kInitialized;
 }
 
-void EVIO::setUp(const x::Params& params) {
+void EVIO::setUp(const x::Params& params, const XVioPerformanceLoggerPtr& xvio_perf_logger) {
   const x::Camera cam(params.cam_fx, params.cam_fy, params.cam_cx, params.cam_cy, params.cam_distortion_model,
                       params.cam_distortion_parameters, params.img_width, params.img_height);
   const x::Tracker tracker(cam, params.fast_detection_delta, params.non_max_supp, params.block_half_length,
@@ -65,7 +65,7 @@ void EVIO::setUp(const x::Params& params) {
   msckf_baseline_n_ = params.msckf_baseline / (params.img_width * params.cam_fx);
 
   // Set up tracker and track manager
-  const TrackManager track_manager(cam, msckf_baseline_n_);
+  const TrackManager track_manager(cam, msckf_baseline_n_, xvio_perf_logger);
   params_ = params;
   camera_ = cam;
   tracker_ = tracker;
@@ -276,7 +276,6 @@ EVIO::computeSLAMCartesianFeaturesForState(
 
 void EVIO::initAtTime(double now) {
   ekf_.lock();
-  initialized_ = false;
   vio_updater_.track_manager_.clear();
   vio_updater_.state_manager_.clear();
 
@@ -371,8 +370,6 @@ void EVIO::initAtTime(double now) {
                  "the buffered states." << std::endl;
   }
   ekf_.unlock();
-
-  initialized_ = true;
 }
 
 /** \brief Gets 3D coordinates of MSCKF inliers and outliers.

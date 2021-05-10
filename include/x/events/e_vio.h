@@ -38,7 +38,7 @@ namespace x {
     public:
       EVIO();
       bool isInitialized() const;
-      void setUp(const Params& params);
+      void setUp(const Params& params, const XVioPerformanceLoggerPtr& xvio_perf_logger = nullptr);
       void setLastRangeMeasurement(RangeMeasurement range_measurement);
       void setLastSunAngleMeasurement(SunAngleMeasurement angle_measurement);
       void initAtTime(double now);
@@ -135,7 +135,6 @@ namespace x {
       StateManager state_manager_;
       RangeMeasurement last_range_measurement_;
       SunAngleMeasurement last_angle_measurement_;
-      bool initialized_ { false };
 
       /**
        * Import a feature match list from a std::vector.
