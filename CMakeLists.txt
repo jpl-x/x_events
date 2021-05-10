@@ -72,18 +72,7 @@ find_package(Eigen3 REQUIRED)
 find_package(easy_profiler_catkin REQUIRED)
 
 
-# Set builsitory for this project is empty
-You can create files directly in GitLab using one of the following options.
-
-Command line instructions
-You can also upload existing files from your computer using the instructions below.
-
-￼
-Git global setup
-git config --global user.name "Florian Mahlknecht"
-git config --global user.email "florian.mahlknecht@jpl.nasa.gov"
-￼
-Create a new repositoryd flags, depending on the architecture
+# Set build flags, depending on the architecture
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall")
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)

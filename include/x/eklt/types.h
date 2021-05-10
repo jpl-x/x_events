@@ -88,7 +88,7 @@ namespace x {
   struct Patch; //forward decl
   using Patches = std::vector<Patch>; //forward decl
 
-  using EventBuffer = std::deque<Event>;
+  using EkltEventBuffer = std::deque<Event>;
   using ImageBuffer = std::map<double, TiledImage>;
 
   struct FeatureTrackData {

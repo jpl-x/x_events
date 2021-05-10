@@ -208,7 +208,7 @@ namespace x {
     double most_current_time_;
 
     // buffers for images and events
-    EventBuffer events_;
+    EkltEventBuffer events_;
     ImageBuffer images_;
 
     // ros
