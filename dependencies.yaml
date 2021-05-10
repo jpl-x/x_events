@@ -1,0 +1,21 @@
+repositories:
+  easy_profiler_catkin:
+    type: git
+    url: git@fornat1.jpl.nasa.gov:florianm/easy_profiler_catkin.git
+    version: master
+  ceres_catkin:
+    type: git
+    url: git@github.com:ethz-asl/ceres_catkin.git
+    version: master
+  suitesparse:
+    type: git
+    url: git@github.com:ethz-asl/suitesparse.git
+    version: master
+  catkin_simple:
+    type: git
+    url: git@github.com:catkin/catkin_simple.git
+    version: master
+  glog_catkin:
+    type: git
+    url: git@github.com:ethz-asl/glog_catkin.git
+    version: master
