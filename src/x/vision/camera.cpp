@@ -325,11 +325,11 @@ Eigen::Vector3d Camera::backProject(const cv::Point2d& keypoint) const
 {
   cv::Point2d keypoint_out = keypoint;
 
-  Camera::pinholeBackProject(keypoint_out);
+  //Camera::pinholeBackProject(keypoint_out);
   Camera::undistort(keypoint_out, keypoint_out);
 
   Eigen::Vector3d bearing_out;
-  bearing_out << keypoint_out.x, keypoint_out.y, 1.0;
+  bearing_out << (keypoint_out.x - cx_) * inv_fx_, (keypoint_out.y - cy_) * inv_fy_, 1.0;
 
   return bearing_out.normalized();
 }
@@ -352,7 +352,7 @@ void Camera::calculateBearingLUT()
       keypoint.y = (double) y;
       Eigen::Vector3d f = backProject(keypoint);
       bearing_lut_.col(x + y * img_width_) =
-        Eigen::Vector4d(f[0], f[1], f[2], 1.);
+        Eigen::Vector4d(f[0], f[1], f[2], 1.0);
     }
   }
 }
@@ -392,7 +392,7 @@ void Camera::distort(const cv::Point2d &input, cv::Point2d &distorted_output) co
       const double& s = distortion_parameters_[0];
       const double s_term = ( 2.0 * std::tan(s / 2.0) );
       const double rad = std::sqrt(r_sq);
-      const double factor = (rad < 0.001) ? 1.0 : std::atan(rad * s_term) / (s * rad);
+      const double factor = ((rad < 0.001)||(s == 0.0)) ? 1.0 : std::atan(rad * s_term) / (s * rad);
 
       distorted_output.x = x * factor;
       distorted_output.y = y * factor;

@@ -72,7 +72,18 @@ find_package(Eigen3 REQUIRED)
 find_package(easy_profiler_catkin REQUIRED)
 
 
-# Set build flags, depending on the architecture
+# Set builsitory for this project is empty
+You can create files directly in GitLab using one of the following options.
+
+Command line instructions
+You can also upload existing files from your computer using the instructions below.
+
+￼
+Git global setup
+git config --global user.name "Florian Mahlknecht"
+git config --global user.email "florian.mahlknecht@jpl.nasa.gov"
+￼
+Create a new repositoryd flags, depending on the architecture
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall")
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
@@ -148,6 +159,8 @@ set (SOURCE
   src/x/eklt/eklt_vio_updater.cpp
   src/x/eklt/eklt_vio.cpp
   src/x/eklt/types.cpp
+  src/x/events/e_vio.cpp
+  src/x/events/event_accumulator.cpp
 )
 
 add_library (x ${SOURCE})
@@ -160,5 +173,3 @@ target_link_libraries(x
   ${catkin_LIBRARIES}
   ${easy_profiler_catkin_LIBRARIES}
 )
-
-#message(WARN "Profiler library = ${easy_profiler_catkin_LIBRARIES}")

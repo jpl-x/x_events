@@ -157,6 +157,30 @@ namespace x
 
     double traj_timeout_gui;
     bool init_at_startup;
+
+    /**
+     * Event related parameters.
+     */
+    double event_cam_fx;
+    double event_cam_fy;
+    double event_cam_cx;
+    double event_cam_cy;
+    DistortionModel event_cam_distortion_model = DistortionModel::FOV;
+    std::vector<double> event_cam_distortion_parameters;
+    int event_img_height;
+    int event_img_width;
+    Vector3 p_ec;
+    Quaternion q_ec;
+    double event_cam_time_offset;
+
+    int event_accumulation_method;
+    double event_accumulation_period;
+    int n_events_min;
+    int n_events_max;
+    int noise_event_rate;
+    int n_events_noise_detection_min;
+    double event_norm_factor;
+    bool correct_event_motion;
   };
 
   /**

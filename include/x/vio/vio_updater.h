@@ -208,6 +208,7 @@ namespace x {
       void applyQRDecomposition(Matrix& h, Matrix& res, Matrix& R);
 
       friend class VIO;
+      friend class EVIO;
   };
 } // namespace x
 
