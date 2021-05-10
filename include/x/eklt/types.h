@@ -8,7 +8,15 @@
 #include <x/common/event_types.h>
 #include <x/vision/tiled_image.h>
 #include <x/common/csv_writer.h>
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+#include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 #include <easy/profiler.h>
 
 
@@ -34,7 +42,7 @@ namespace x {
 
   struct EkltPerformanceLogger {
 
-    explicit EkltPerformanceLogger(const std::filesystem::path & path)
+    explicit EkltPerformanceLogger(const fs::path & path)
      : events_csv(path / "events.csv", {"ts_start", "ts_stop"})
      , optimizations_csv(path / "optimizations.csv", {"ts_start", "ts_stop", "num_iterations", "final_cost"})
      , tracks_csv(path / "tracks.csv", {"ts", "id", "update_type", "patch_t_current", "center_x", "center_y", "flow_angle"}) {}

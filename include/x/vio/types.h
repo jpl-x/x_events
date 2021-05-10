@@ -25,7 +25,15 @@
 #include <Eigen/Dense>
 #include <easy/profiler.h>
 #include <x/common/csv_writer.h>
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+  #elif __has_include(<experimental/filesystem>)
+#include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 
 /**
  * This header defines common types used in xVIO.
@@ -37,7 +45,7 @@ namespace x
 
   struct XVioPerformanceLogger {
 
-    explicit XVioPerformanceLogger(const std::filesystem::path & path)
+    explicit XVioPerformanceLogger(const fs::path & path)
      : features_csv(path / "features.csv", {"ts", "num_slam_features", "num_msckf_features",
                                             "num_opportunistic_features", "num_potential_features"}) {}
 
