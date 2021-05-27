@@ -41,15 +41,17 @@
 namespace x
 {
   using FeaturesCsv = CsvWriter<profiler::timestamp_t, size_t, size_t, size_t, size_t>;
+  using TracksCsv = CsvWriter<profiler::timestamp_t, u_int32_t, double, double, double, double, double, std::string>;
 
 
   struct XVioPerformanceLogger {
 
     explicit XVioPerformanceLogger(const fs::path & path)
-     : features_csv(path / "features.csv", {"ts", "num_slam_features", "num_msckf_features",
-                                            "num_opportunistic_features", "num_potential_features"}) {}
+     : features_csv(path / "features.csv", {"ts", "num_slam_features", "num_msckf_features", "num_opportunistic_features", "num_potential_features"})
+     , tracks_csv(path / "xvio_tracks.csv", {"lost_ts", "id", "t", "x", "y", "x_dist", "y_dist", "update_type"}) {}
 
     FeaturesCsv features_csv;
+    TracksCsv tracks_csv;
   };
 
   typedef std::shared_ptr<XVioPerformanceLogger> XVioPerformanceLoggerPtr;

@@ -240,8 +240,8 @@ namespace x {
       lost_indices_.push_back(&patch - &patches_[0]);
 
       if (perf_logger_)
-        perf_logger_->tracks_csv.addRow(profiler::now(), patch.id_, EkltTrackUpdateType::Lost,
-                                        patch.t_curr_, patch.center_.x, patch.center_.y, patch.flow_angle_);
+        perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.id_, EkltTrackUpdateType::Lost,
+                                             patch.t_curr_, patch.center_.x, patch.center_.y, patch.flow_angle_);
     }
   };
 
