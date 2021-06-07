@@ -64,8 +64,8 @@ void EKLTVIO::setUp(const x::Params &params, const x::EkltParams &eklt_params,
   const StateManager state_manager(n_poses_state, n_features_state);
   state_manager_ = state_manager;
 
-  // Gravity - TODO(jeff) Read from params
-  Vector3 g(0.0, 0.0, -9.81);
+  // Gravity
+  Vector3 g = params_.g;
 
   // IMU noise
   x::ImuNoise imu_noise;
@@ -206,7 +206,7 @@ void EKLTVIO::initAtTime(double now) {
 
   // Initial IMU measurement (specific force, velocity)
   Vector3 a_m, w_m;
-  a_m << 0.0, 0.0, 9.81;
+  a_m = -params_.g;//a_m << 0.0, 0.0, 9.81;
   w_m << 0.0, 0.0, 0.0;
 
   // Initial time cannot be 0, which may happen when using simulated Clock time

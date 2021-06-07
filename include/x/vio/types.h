@@ -71,6 +71,7 @@ namespace x
     Quaternion q;
     Vector3 b_w;
     Vector3 b_a;
+    Vector3 g;
     double cam_fx;
     double cam_fy;
     double cam_cx;
