@@ -172,7 +172,12 @@ State EKLTVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_pt
   auto match_img = eklt_tracker_.getCurrentImage().clone();
 
   const MatchList &matches = eklt_tracker_.getMatches();
-  VioMeasurement measurement(matches.back().current.getTimestamp(),
+
+  const auto timestamp = matches.back().current.getTimestamp();
+
+  const double timestamp_corrected = timestamp + params_.time_offset;
+
+  VioMeasurement measurement(timestamp_corrected,
                              seq++,
                              matches,
                              match_img,
@@ -182,6 +187,9 @@ State EKLTVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_pt
 
   // Process update measurement with xEKF
   State updated_state = ekf_.processUpdateMeasurement();
+
+  if(updated_state.getTime() != kInvalid)
+    updated_state.setTime(timestamp);
 
   // Populate GUI image outputs
   eklt_tracker_.renderVisualization(tracker_img);

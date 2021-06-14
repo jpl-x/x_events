@@ -291,3 +291,12 @@ Quaternion State::errorQuatFromSmallAngles(const Vector3& delta_theta) const {
     return delta_q;
   }
 }
+
+`
+Vector3 State::getGyroscopeBias() const {
+  return b_w_;
+}
+
+Vector3 State::getAccelerometerBias() const {
+  return b_a_;
+}

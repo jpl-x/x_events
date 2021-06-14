@@ -102,6 +102,9 @@ namespace x
 
       Vector3 getPosition() const;
 
+      Vector3 getGyroscopeBias() const;
+      Vector3 getAccelerometerBias() const;
+
       Quaternion getOrientation() const;
 
       Matrix getPositionArray() const;
