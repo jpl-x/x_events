@@ -54,6 +54,24 @@ namespace x {
 
   typedef std::shared_ptr<EkltPerformanceLogger> EkltPerformanceLoggerPtr;
 
+  enum class EkltEkfFeatureInterpolation : char {
+    NO_INTERPOLATION, // always take last
+    NEAREST_NEIGHBOR, // take one of both
+    LINEAR,  // does linear inter- and extrapolation
+  };
+
+  enum class EkltEkfUpdateStrategy : char {
+    EVERY_ROS_EVENT_MESSAGE,
+    EVERY_N_EVENTS,
+    // triggers EKF update when incoming event timestamps are more than n msec ahead from previous update
+    EVERY_N_MSEC_WITH_EVENTS,
+  };
+
+  enum class EkltEkfUpdateTimestamp : char {
+    PATCH_AVERAGE,
+    PATCH_MAXIMUM,
+  };
+
   struct EkltParams {
     // feature detection
     int max_corners = 100; // Maximum features allowed to be tracked
@@ -91,6 +109,17 @@ namespace x {
     int outlier_method = 8; // same as xVIO: 4 for LMEDS, 8 for RANSAC
     double outlier_param1 = 1; // same as xVIO: maximum distance from a non-outlier to an epipolar line in pixels
     double outlier_param2 = 0.99; // same as xVIO: desirable level of confidence e.g. 0.99
+
+    EkltEkfFeatureInterpolation ekf_feature_interpolation = EkltEkfFeatureInterpolation::LINEAR;
+    // factor limiting the extrapolation amount. E.g. 0.0 means only interpolation is performed (no extrapolation), 1.0
+    // means that at most the time difference between the last two points is used for extrapolation.
+    // If < 0, no limit is applied.
+    double feature_extrapolation_limit = -1.0;
+
+    int ekf_update_every_n = -1;
+
+    EkltEkfUpdateStrategy ekf_update_strategy = EkltEkfUpdateStrategy::EVERY_ROS_EVENT_MESSAGE;
+    EkltEkfUpdateTimestamp ekf_update_timestamp = EkltEkfUpdateTimestamp::PATCH_AVERAGE;
   };
 
   struct Patch; //forward decl
