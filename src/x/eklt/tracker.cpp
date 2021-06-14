@@ -31,6 +31,10 @@ void EkltTracker::setParams(const EkltParams &params) {
   params_ = params;
   viewer_ptr_->setParams(params);
   optimizer_.setParams(params);
+
+  if (params_.ekf_update_strategy == EkltEkfUpdateStrategy::EVERY_N_EVENTS) {
+    events_till_next_ekf_update_ = params_.ekf_update_every_n;
+  }
 }
 
 void EkltTracker::initPatches(Patches &patches, std::vector<int> &lost_indices, const int &corners,
@@ -382,13 +386,15 @@ public:
   profiler::timestamp_t t_start_;
 };
 
-bool EkltTracker::processEvents(const EventArray::ConstPtr &msg) {
+std::vector<MatchList> EkltTracker::processEvents(const EventArray::ConstPtr &msg) {
+  std::vector<MatchList> match_lists_for_ekf_updates;
+
   if (!got_first_image_) {
     LOG_EVERY_N(INFO, 20) << "Events dropped since no image present.";
-    return false;
+    return match_lists_for_ekf_updates;
   }
 
-  bool match_list_needs_update = false;
+  bool did_some_patch_change = false;
   for (const auto &ev : msg->events) {
     EASY_EVENT("Single Event");
     EventPerfHelper helper(perf_logger_);
@@ -401,7 +407,7 @@ bool EkltTracker::processEvents(const EventArray::ConstPtr &msg) {
     int num_features_tracked = patches_.size();
     // go through each patch and update the event frame with the new event
     for (Patch &patch: patches_) {
-      match_list_needs_update |= updatePatch(patch, ev);
+      did_some_patch_change |= updatePatch(patch, ev);
       // count tracked features
       if (patch.lost_)
         num_features_tracked--;
@@ -421,16 +427,41 @@ bool EkltTracker::processEvents(const EventArray::ConstPtr &msg) {
       auto image_it = current_image_it_;
       image_it--;
       images_.erase(image_it);
+
+
+      switch (params_.ekf_update_strategy) {
+        case EkltEkfUpdateStrategy::EVERY_ROS_EVENT_MESSAGE:
+          // nothing to do here
+          break;
+        case EkltEkfUpdateStrategy::EVERY_N_EVENTS:
+          if (--events_till_next_ekf_update_ <= 0) {
+            if (did_some_patch_change) {
+              events_till_next_ekf_update_ = params_.ekf_update_every_n;
+              did_some_patch_change = false;
+              match_lists_for_ekf_updates.push_back(getMatchListFromPatches());
+            } else {
+              events_till_next_ekf_update_ = 1; // try on next event again
+            }
+          }
+          break;
+        case EkltEkfUpdateStrategy::EVERY_N_MSEC_WITH_EVENTS:
+          if (ev.ts - last_ekf_update_timestamp >= params_.update_every_n_events*1e-3 && did_some_patch_change) {
+            did_some_patch_change = false;
+            last_ekf_update_timestamp = ev.ts;
+            match_lists_for_ekf_updates.push_back(getMatchListFromPatches());
+          }
+          break;
+      }
     }
 
     if (params_.display_features && ++viewer_counter_ % params_.update_every_n_events == 0)
       viewer_ptr_->setViewData(patches_, most_current_time_, current_image_it_);
   }
 
-  if (match_list_needs_update) {
-    this->updateMatchListFromPatches();
+  if (did_some_patch_change && params_.ekf_update_strategy == EkltEkfUpdateStrategy::EVERY_ROS_EVENT_MESSAGE) {
+    match_lists_for_ekf_updates.push_back(getMatchListFromPatches());
   }
-  return match_list_needs_update && !matches_.empty();
+  return match_lists_for_ekf_updates;
 }
 
 void EkltTracker::processImage(double timestamp, TiledImage &current_img, unsigned int frame_number) {
@@ -451,23 +482,27 @@ void EkltTracker::processImage(double timestamp, TiledImage &current_img, unsign
   }
 }
 
-const MatchList &EkltTracker::getMatches() const {
-  return matches_;
-}
+MatchList EkltTracker::getMatchListFromPatches() {
+  MatchList matches;
 
-void EkltTracker::updateMatchListFromPatches() {
   EASY_FUNCTION();
   double interpolation_time = std::numeric_limits<double>::lowest();
-//  double interpolation_time = 0.0;
-//  int N = 0;
+  int N = 0;
+
   for (auto& p : patches_) {
     if (!p.lost_) {
-      interpolation_time = std::max(interpolation_time, p.t_curr_);
-//      interpolation_time = (N * interpolation_time + p.t_curr_) / (N+1); // avg
-//      ++N;
+      switch (params_.ekf_update_timestamp) {
+        case EkltEkfUpdateTimestamp::PATCH_AVERAGE:
+          interpolation_time = (N * interpolation_time + p.t_curr_) / (N+1);
+          ++N;
+          break;
+        case EkltEkfUpdateTimestamp::PATCH_MAXIMUM:
+          interpolation_time = std::max(interpolation_time, p.t_curr_);
+          break;
+      }
     }
   }
-  matches_.clear();
+  matches.clear();
 
   for (auto& p : patches_) {
     if (!p.lost_) {
@@ -475,21 +510,21 @@ void EkltTracker::updateMatchListFromPatches() {
       if (isPointOutOfView(cv::Point2d(match.current.getX(), match.current.getY()))) {
         discardPatch(p);
       } else {
-        matches_.push_back(match);
+        matches.push_back(match);
       }
     }
   }
 
   // remove outliers if necessary
 
-  if (matches_.empty() || !params_.enable_outlier_removal)
-    return;
+  if (matches.empty() || !params_.enable_outlier_removal)
+    return matches;
 
   std::vector<cv::Point2f> pts1, pts2;
-  pts1.reserve(matches_.size());
-  pts2.reserve(matches_.size());
+  pts1.reserve(matches.size());
+  pts2.reserve(matches.size());
 
-  for (const auto& m : matches_) {
+  for (const auto& m : matches) {
     pts1.emplace_back(m.previous.getX(), m.previous.getY());
     pts2.emplace_back(m.current.getX(), m.current.getY());
   }
@@ -497,9 +532,9 @@ void EkltTracker::updateMatchListFromPatches() {
   auto mask = x::detectOutliers(pts1, pts2, params_.outlier_method, params_.outlier_param1, params_.outlier_param2);
 
   MatchList matches_refined;
-  matches_refined.reserve(matches_.size()); // prepare for best case
+  matches_refined.reserve(matches.size()); // prepare for best case
 
-  auto m_it = matches_.cbegin();
+  auto m_it = matches.cbegin();
 
   for (const auto& m : mask) {
     if (m) {
@@ -508,7 +543,7 @@ void EkltTracker::updateMatchListFromPatches() {
     ++m_it;
   }
 
-  std::swap(matches_, matches_refined);
+  return matches_refined;
 }
 
 void EkltTracker::renderVisualization(TiledImage &tracker_debug_image_output) {

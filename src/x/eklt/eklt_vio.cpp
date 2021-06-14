@@ -164,38 +164,41 @@ State EKLTVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_pt
 //  std::cout << "Events at timestamps [" << std::setprecision(17) << events_ptr->events.front().ts << ", " << events_ptr->events.back().ts
 //            << "] received in xEKLTVIO class." << std::endl;
 
-  bool matches_have_changed = eklt_tracker_.processEvents(events_ptr);
+  auto match_lists_for_ekf_updates = eklt_tracker_.processEvents(events_ptr);
 
-  if (!matches_have_changed)
-    return State();
+  auto most_recent_state = State();
 
-  auto match_img = eklt_tracker_.getCurrentImage().clone();
+  double most_recent_timestamp = -1.0;
 
-  const MatchList &matches = eklt_tracker_.getMatches();
+  for (const auto& matches : match_lists_for_ekf_updates) {
+    auto match_img = eklt_tracker_.getCurrentImage().clone();
 
-  const auto timestamp = matches.back().current.getTimestamp();
+    const auto timestamp = matches.back().current.getTimestamp();
 
-  const double timestamp_corrected = timestamp + params_.time_offset;
+    const double timestamp_corrected = timestamp + params_.time_offset;
 
-  VioMeasurement measurement(timestamp_corrected,
-                             seq++,
-                             matches,
-                             match_img,
-                             last_range_measurement_,
-                             last_angle_measurement_);
-  vio_updater_.setMeasurement(measurement);
+    VioMeasurement measurement(timestamp_corrected,
+                               seq++,
+                               matches,
+                               match_img,
+                               last_range_measurement_,
+                               last_angle_measurement_);
+    vio_updater_.setMeasurement(measurement);
 
-  // Process update measurement with xEKF
-  State updated_state = ekf_.processUpdateMeasurement();
+    // Process update measurement with xEKF
+    most_recent_state = ekf_.processUpdateMeasurement();
+    most_recent_timestamp = timestamp;
+  }
 
-  if(updated_state.getTime() != kInvalid)
-    updated_state.setTime(timestamp);
+  if(most_recent_state.getTime() != kInvalid) {
+    most_recent_state.setTime(most_recent_timestamp);
 
-  // Populate GUI image outputs
-  eklt_tracker_.renderVisualization(tracker_img);
-  feature_img = vio_updater_.getFeatureImage();
+    // Populate GUI image outputs
+    eklt_tracker_.renderVisualization(tracker_img);
+    feature_img = vio_updater_.getFeatureImage();
+  }
 
-  return updated_state;
+  return most_recent_state;
 }
 
 /** Calls the state manager to compute the cartesian coordinates of the SLAM features.

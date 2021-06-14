@@ -42,9 +42,7 @@ namespace x {
       /**
      * @brief processes all events in array and returns true if matches have been updated.
      */
-    bool processEvents(const EventArray::ConstPtr &msg);
-
-    const MatchList& getMatches() const;
+      std::vector<MatchList> processEvents(const EventArray::ConstPtr &msg);
 
     // TODO why don't we use: current_img.getTimestamp(), current_img.getFrameNumber()
     void processImage(double timestamp, TiledImage &current_img, unsigned int frame_number);
@@ -197,11 +195,12 @@ namespace x {
     Camera camera_;
     EkltParams params_;
     EkltPerformanceLoggerPtr perf_logger_;
-    MatchList matches_;
     cv::Size sensor_size_;
 
     // image flags
     bool got_first_image_;
+    int events_till_next_ekf_update_ = -1;
+    double last_ekf_update_timestamp = -1;
 
     // pointers to most recent image and time
     ImageBuffer::iterator current_image_it_;
@@ -230,7 +229,7 @@ namespace x {
     std::mutex events_mutex_;
     std::mutex images_mutex_;
 
-    void updateMatchListFromPatches();
+    MatchList getMatchListFromPatches();
 
     int viewer_counter_ = 0;
 
