@@ -53,6 +53,8 @@ struct Patch
         half_size_ = (params.patch_size - 1) / 2;
         batch_size_ = params.batch_size;
         update_rate_ = params.update_every_n_events;
+        ekf_feature_interpolation_ = params.ekf_feature_interpolation;
+        ekf_feature_extrapolation_limit_ = params.ekf_feature_extrapolation_limit;
 
         reset(init_center_, t_init);
     }
@@ -82,12 +84,68 @@ struct Patch
 
     Feature interpolateToTime(double t) const {
       double x, y;
-      if (fabs(t_curr_ - t_previous_) >= 1e-6) {
-        x = previous_center_.x + ((t - t_previous_) / (t_curr_ - t_previous_)) * (center_.x - previous_center_.x);
-        y = previous_center_.y + ((t - t_previous_) / (t_curr_ - t_previous_)) * (center_.y - previous_center_.y);
-      } else {
-        x = center_.x;
-        y = center_.y;
+
+      switch (ekf_feature_interpolation_) {
+        case EkltEkfFeatureInterpolation::NO_INTERPOLATION:
+          x = center_.x;
+          y = center_.y;
+          break;
+        case EkltEkfFeatureInterpolation::NEAREST_NEIGHBOR:
+          if (fabs(t - t_curr_) < fabs(t - t_previous_)) {
+            x = center_.x;
+            y = center_.y;
+          } else {
+            x = previous_center_.x;
+            y = previous_center_.y;
+          }
+          break;
+        case EkltEkfFeatureInterpolation::LINEAR_NO_LIMIT: {
+          // time factor assembles normed time distance from current center: e.g. -1 --> previous_center
+          double time_factor = 0;
+
+          if (fabs(t_curr_ - t_previous_) >= 1e-9)  // avoid division by zero
+            time_factor = (t - t_curr_) / (t_curr_ - t_previous_);
+
+          x = center_.x + time_factor * (center_.x - previous_center_.x);
+          y = center_.y + time_factor * (center_.y - previous_center_.y);
+
+          break;
+        }
+        case EkltEkfFeatureInterpolation::LINEAR_RELATIVE_LIMIT: {
+          // time factor assembles normed time distance from current center: e.g. -1 --> previous_center
+          double time_factor = 0;
+
+          if (fabs(t_curr_ - t_previous_) >= 1e-9)  // avoid division by zero
+            time_factor = (t - t_curr_) / (t_curr_ - t_previous_);
+
+          if (time_factor > 0) {
+            time_factor = fmin(time_factor, ekf_feature_extrapolation_limit_);
+          } else {
+            time_factor = fmax(time_factor, -1 - ekf_feature_extrapolation_limit_);
+          }
+
+          x = center_.x + time_factor * (center_.x - previous_center_.x);
+          y = center_.y + time_factor * (center_.y - previous_center_.y);
+          break;
+        }
+        case EkltEkfFeatureInterpolation::LINEAR_ABSOLUTE_LIMIT: {
+          // time factor assembles normed time distance from current center: e.g. -1 --> previous_center
+          double time_factor = 0;
+
+          if (fabs(t_curr_ - t_previous_) >= 1e-9) {  // avoid division by zero
+            time_factor = (t - t_curr_) / (t_curr_ - t_previous_);
+
+            if (time_factor > 0) {
+              time_factor = fmin(time_factor, ekf_feature_extrapolation_limit_ / (t_curr_ - t_previous_));
+            } else {
+              time_factor = fmax(time_factor, -1 - ekf_feature_extrapolation_limit_ / (t_curr_ - t_previous_));
+            }
+          }
+
+          x = center_.x + time_factor * (center_.x - previous_center_.x);
+          y = center_.y + time_factor * (center_.y - previous_center_.y);
+          break;
+        }
       }
       return {t, 0, x, y, x, y};
     }
@@ -257,6 +315,8 @@ struct Patch
     x::Camera* camera_ptr_;
 
     std::deque<x::Event> event_buffer_;
+    EkltEkfFeatureInterpolation ekf_feature_interpolation_;
+    double ekf_feature_extrapolation_limit_;
 };
 
 }

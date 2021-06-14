@@ -57,7 +57,9 @@ namespace x {
   enum class EkltEkfFeatureInterpolation : char {
     NO_INTERPOLATION, // always take last
     NEAREST_NEIGHBOR, // take one of both
-    LINEAR,  // does linear inter- and extrapolation
+    LINEAR_NO_LIMIT,  // does linear inter- and extrapolation
+    LINEAR_RELATIVE_LIMIT, // does linear inter- and extrapolation till a ratio of interpolation_limit is not exceeded
+    LINEAR_ABSOLUTE_LIMIT, // does linear inter- and extrapolation until interpolation_limit in seconds is not exceeded
   };
 
   enum class EkltEkfUpdateStrategy : char {
@@ -110,12 +112,11 @@ namespace x {
     double outlier_param1 = 1; // same as xVIO: maximum distance from a non-outlier to an epipolar line in pixels
     double outlier_param2 = 0.99; // same as xVIO: desirable level of confidence e.g. 0.99
 
-    EkltEkfFeatureInterpolation ekf_feature_interpolation = EkltEkfFeatureInterpolation::LINEAR;
+    EkltEkfFeatureInterpolation ekf_feature_interpolation = EkltEkfFeatureInterpolation::LINEAR_NO_LIMIT;
     // factor limiting the extrapolation amount. E.g. 0.0 means only interpolation is performed (no extrapolation), 1.0
     // means that at most the time difference between the last two points is used for extrapolation.
     // If < 0, no limit is applied.
-    double feature_extrapolation_limit = -1.0;
-
+    double ekf_feature_extrapolation_limit = -1.0;
     int ekf_update_every_n = -1;
 
     EkltEkfUpdateStrategy ekf_update_strategy = EkltEkfUpdateStrategy::EVERY_ROS_EVENT_MESSAGE;
