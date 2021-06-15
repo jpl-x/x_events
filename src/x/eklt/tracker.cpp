@@ -445,9 +445,9 @@ std::vector<MatchList> EkltTracker::processEvents(const EventArray::ConstPtr &ms
           }
           break;
         case EkltEkfUpdateStrategy::EVERY_N_MSEC_WITH_EVENTS:
-          if (ev.ts - last_ekf_update_timestamp >= params_.update_every_n_events*1e-3 && did_some_patch_change) {
+          if (ev.ts - last_ekf_update_timestamp_ >= params_.ekf_update_every_n * 1e-3 && did_some_patch_change) {
             did_some_patch_change = false;
-            last_ekf_update_timestamp = ev.ts;
+            last_ekf_update_timestamp_ = ev.ts;
             match_lists_for_ekf_updates.push_back(getMatchListFromPatches());
           }
           break;

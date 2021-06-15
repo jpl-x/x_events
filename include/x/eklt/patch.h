@@ -86,10 +86,6 @@ struct Patch
       double x, y;
 
       switch (ekf_feature_interpolation_) {
-        case EkltEkfFeatureInterpolation::NO_INTERPOLATION:
-          x = center_.x;
-          y = center_.y;
-          break;
         case EkltEkfFeatureInterpolation::NEAREST_NEIGHBOR:
           if (fabs(t - t_curr_) < fabs(t - t_previous_)) {
             x = center_.x;
@@ -146,6 +142,12 @@ struct Patch
           y = center_.y + time_factor * (center_.y - previous_center_.y);
           break;
         }
+
+        case EkltEkfFeatureInterpolation::NO_INTERPOLATION:
+        default:
+          x = center_.x;
+          y = center_.y;
+          break;
       }
       return {t, 0, x, y, x, y};
     }

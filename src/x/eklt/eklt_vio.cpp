@@ -169,9 +169,11 @@ State EKLTVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_pt
   auto most_recent_state = State();
 
   double most_recent_timestamp = -1.0;
+  auto match_img = eklt_tracker_.getCurrentImage().clone();
 
   for (const auto& matches : match_lists_for_ekf_updates) {
-    auto match_img = eklt_tracker_.getCurrentImage().clone();
+    if (matches.empty())
+      continue;;
 
     const auto timestamp = matches.back().current.getTimestamp();
 

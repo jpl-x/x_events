@@ -93,8 +93,8 @@ struct ErrorRotation
         T vx = ceres::cos(v[0]);
         T vy = ceres::sin(v[0]);
 
-        T a0 = ceres::cos(p[0]);
-        T a1 = -ceres::sin(p[0]);
+        T a0 = ceres::cos(r);
+        T a1 = -ceres::sin(r);
 
         T a2 = -a1;
         T a3 = a0;
@@ -103,8 +103,8 @@ struct ErrorRotation
         {
             for (int x=0;x<config_->patch_size_;x++)
             {
-                T x_p = a0*T(x) + a1*T(y) + a0*(config_->feature_.x - config_->half_size_) + a1 * (config_->feature_.y - config_->half_size_) + p[1];
-                T y_p = a2*T(x) + a3*T(y) + a2*(config_->feature_.x - config_->half_size_) + a3 * (config_->feature_.y - config_->half_size_) + p[2];
+                T x_p = a0*T(x) + a1*T(y) + a0*(config_->feature_.x - config_->half_size_) + a1 * (config_->feature_.y - config_->half_size_) + tx;
+                T y_p = a2*T(x) + a3*T(y) + a2*(config_->feature_.x - config_->half_size_) + a3 * (config_->feature_.y - config_->half_size_) + ty;
 
                 T g[2];
                 config_->grad_interp_->Evaluate(y_p, x_p, g);

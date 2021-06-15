@@ -200,7 +200,7 @@ namespace x {
     // image flags
     bool got_first_image_;
     int events_till_next_ekf_update_ = -1;
-    double last_ekf_update_timestamp = -1;
+    double last_ekf_update_timestamp_ = -1;
 
     // pointers to most recent image and time
     ImageBuffer::iterator current_image_it_;

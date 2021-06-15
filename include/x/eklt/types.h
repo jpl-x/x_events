@@ -121,6 +121,7 @@ namespace x {
 
     EkltEkfUpdateStrategy ekf_update_strategy = EkltEkfUpdateStrategy::EVERY_ROS_EVENT_MESSAGE;
     EkltEkfUpdateTimestamp ekf_update_timestamp = EkltEkfUpdateTimestamp::PATCH_AVERAGE;
+    bool use_linlog_scale = false; // whether to use piecewise lin-log scale instead of log(img+log_eps)
   };
 
   struct Patch; //forward decl
