@@ -74,7 +74,7 @@ namespace x {
     /**
      * Writes the buffer in CSV-format to the open file.
      */
-    void flush() {
+    void flush() override {
       while (!buffer_.empty()) {
         // expands variadic template types and forwards them to x::csv_write_row
         std::apply([=](auto &&... args) { x::csv_write_row(outfile_, args...); }, buffer_.front());

@@ -17,6 +17,7 @@ namespace x {
     class DebugMemoryInterface {
     public:
       virtual size_t memory_usage_in_bytes() const = 0;
+      virtual void flush() = 0;
     };
 
   public:
@@ -30,6 +31,11 @@ namespace x {
       for (const auto& d : debug_set_)
         total_memory += d->memory_usage_in_bytes();
       return total_memory;
+    }
+
+    void flush_all() const {
+      for (const auto& d : debug_set_)
+        d->flush();
     }
 
     void register_debug_memory(DebugMemoryInterface* debug_memory) {
