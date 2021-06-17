@@ -114,6 +114,13 @@ namespace x
 
       Vector3 getPositionExtrinsics() const;
 
+      /**
+       * Assembles and returns 23 dynamic states.
+       *
+       * @return The core state vector.
+       */
+      Eigen::VectorXd getDynamicStates() const;
+
       Matrix getCovariance() const;
 
       /**
@@ -122,6 +129,13 @@ namespace x
        * @return The pose covariance matrix.
        */
       Matrix getPoseCovariance() const;
+
+      /**
+       * Assembles and returns 21x21 covariance matrix of the dynamic state errors.
+       *
+       * @return The dynamic state covariance matrix.
+       */
+      Matrix getDynamicCovariance() const;
 
       Matrix& getCovarianceRef();
 

@@ -102,6 +102,19 @@ Vector3 State::getPositionExtrinsics() const {
   return p_ic_;
 }
 
+Eigen::VectorXd State::getDynamicStates() const {
+  Eigen::VectorXd dyn_states(23);
+
+  // Fill in the states
+  dyn_states.segment(0,3) = p_;
+  dyn_states.segment(3,3) = v_;
+  dyn_states.segment(6,4) = q_.coeffs();
+  dyn_states.segment(10,3) = b_w_;
+  dyn_states.segment(13,3) = b_a_;
+
+  return dyn_states;
+}
+
 Matrix State::getCovariance() const {
   return cov_;
 }
@@ -116,6 +129,10 @@ Matrix State::getPoseCovariance() const {
   pose_cov.bottomLeftCorner(3,3)  = cov_.block<3,3>(kIdxQ,kIdxP);
 
   return pose_cov;
+}
+
+Matrix State::getDynamicCovariance() const {
+  return cov_.topLeftCorner(kSizeCoreErr,kSizeCoreErr);
 }
 
 Matrix& State::getCovarianceRef() {
