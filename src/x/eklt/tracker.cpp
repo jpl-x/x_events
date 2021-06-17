@@ -427,31 +427,30 @@ std::vector<MatchList> EkltTracker::processEvents(const EventArray::ConstPtr &ms
       auto image_it = current_image_it_;
       image_it--;
       images_.erase(image_it);
+    }
 
-
-      switch (params_.ekf_update_strategy) {
-        case EkltEkfUpdateStrategy::EVERY_ROS_EVENT_MESSAGE:
-          // nothing to do here
-          break;
-        case EkltEkfUpdateStrategy::EVERY_N_EVENTS:
-          if (--events_till_next_ekf_update_ <= 0) {
-            if (did_some_patch_change) {
-              events_till_next_ekf_update_ = params_.ekf_update_every_n;
-              did_some_patch_change = false;
-              match_lists_for_ekf_updates.push_back(getMatchListFromPatches());
-            } else {
-              events_till_next_ekf_update_ = 1; // try on next event again
-            }
-          }
-          break;
-        case EkltEkfUpdateStrategy::EVERY_N_MSEC_WITH_EVENTS:
-          if (ev.ts - last_ekf_update_timestamp_ >= params_.ekf_update_every_n * 1e-3 && did_some_patch_change) {
+    switch (params_.ekf_update_strategy) {
+      case EkltEkfUpdateStrategy::EVERY_ROS_EVENT_MESSAGE:
+        // nothing to do here
+        break;
+      case EkltEkfUpdateStrategy::EVERY_N_EVENTS:
+        if (--events_till_next_ekf_update_ <= 0) {
+          if (did_some_patch_change) {
+            events_till_next_ekf_update_ = params_.ekf_update_every_n;
             did_some_patch_change = false;
-            last_ekf_update_timestamp_ = ev.ts;
             match_lists_for_ekf_updates.push_back(getMatchListFromPatches());
+          } else {
+            events_till_next_ekf_update_ = 1; // try on next event again
           }
-          break;
-      }
+        }
+        break;
+      case EkltEkfUpdateStrategy::EVERY_N_MSEC_WITH_EVENTS:
+        if (ev.ts - last_ekf_update_timestamp_ >= params_.ekf_update_every_n * 1e-3 && did_some_patch_change) {
+          did_some_patch_change = false;
+          last_ekf_update_timestamp_ = ev.ts;
+          match_lists_for_ekf_updates.push_back(getMatchListFromPatches());
+        }
+        break;
     }
 
     if (params_.display_features && ++viewer_counter_ % params_.update_every_n_events == 0)
