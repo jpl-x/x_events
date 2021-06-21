@@ -18,24 +18,24 @@
 #include <x/vision/tracker.h>
 
 #include <x/common/event_types.h>
+#include <x/vio/abstract_vio.h>
 
 
 namespace x {
-  class EKLTVIO {
+  class EKLTVIO : public AbstractVio {
   public:
-    EKLTVIO();
+    explicit EKLTVIO(XVioPerformanceLoggerPtr  xvio_perf_logger = nullptr,
+                     EkltPerformanceLoggerPtr  eklt_perf_logger = nullptr);
 
     bool isInitialized() const;
 
-    void setUp(const Params &params,
-               const XVioPerformanceLoggerPtr& xvio_perf_logger = nullptr,
-               const EkltPerformanceLoggerPtr& perf_logger = nullptr);
+    void setUp(const Params &params) override;
 
     void setLastRangeMeasurement(RangeMeasurement range_measurement);
 
     void setLastSunAngleMeasurement(SunAngleMeasurement angle_measurement);
 
-    void initAtTime(double now);
+    void initAtTime(double now) override;
 
     void getMsckfFeatures(Vector3dArray &inliers, Vector3dArray &outliers);
 
@@ -51,7 +51,7 @@ namespace x {
     State processImu(double timestamp,
                      unsigned int seq,
                      const Vector3 &w_m,
-                     const Vector3 &a_m);
+                     const Vector3 &a_m) override;
 
     /**
      * Creates an update measurement from image and pass it to EKF.
@@ -66,7 +66,7 @@ namespace x {
     State processImageMeasurement(double timestamp,
                                   unsigned int seq,
                                   TiledImage &match_img,
-                                  TiledImage &feature_img);
+                                  TiledImage &feature_img) override;
 
     /**
      * Processes events information.
@@ -75,7 +75,9 @@ namespace x {
      * @return The updated state, or invalid if the update could not happen.
      */
     State processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr,
-                                   TiledImage &tracker_img, TiledImage &feature_img);
+                                   TiledImage &tracker_img, TiledImage &feature_img) override;
+
+    bool doesProcessEvents() const override { return true; }
 
     /**
      * Compute cartesian coordinates of SLAM features for input state.
@@ -119,7 +121,11 @@ namespace x {
     bool initialized_{false};
 
     // counts the asynchronous state updates triggered by the EKLT tracker
-    int seq_;
+    int seq_ = 0;
+
+    // optional performance loggers
+    XVioPerformanceLoggerPtr xvio_perf_logger_;
+    EkltPerformanceLoggerPtr eklt_perf_logger_;
   };
 } // namespace x
 

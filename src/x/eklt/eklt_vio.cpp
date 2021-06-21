@@ -14,6 +14,7 @@
 // if Boost was compiled with BOOST_NO_EXCEPTIONS defined, it expects a user
 // defined trow_exception function, so define a dummy here, if this is the case
 #include <exception>
+#include <utility>
 
 using namespace x;
 
@@ -24,18 +25,20 @@ namespace boost {
 }
 
 
-EKLTVIO::EKLTVIO()
+EKLTVIO::EKLTVIO(XVioPerformanceLoggerPtr xvio_perf_logger, EkltPerformanceLoggerPtr eklt_perf_logger)
   : ekf_{Ekf(vio_updater_)}
   , msckf_baseline_n_(-1.0)
   , eklt_viewer_()
-  , eklt_tracker_(x::Camera(), eklt_viewer_) {
+  , eklt_tracker_(x::Camera(), eklt_viewer_)
+  , xvio_perf_logger_(std::move(xvio_perf_logger))
+  , eklt_perf_logger_(std::move(eklt_perf_logger)) {
 }
 
 bool EKLTVIO::isInitialized() const {
   return initialized_;
 }
 
-void EKLTVIO::setUp(const x::Params &params, const XVioPerformanceLoggerPtr& xvio_perf_logger, const EkltPerformanceLoggerPtr& perf_logger) {
+void EKLTVIO::setUp(const x::Params &params) {
   const x::Camera cam(params.cam_fx, params.cam_fy, params.cam_cx, params.cam_cy, params.cam_distortion_model,
                       params.cam_distortion_parameters, params.img_width, params.img_height);
   const x::Tracker tracker(cam, params.fast_detection_delta, params.non_max_supp, params.block_half_length,
@@ -46,7 +49,7 @@ void EKLTVIO::setUp(const x::Params &params, const XVioPerformanceLoggerPtr& xvi
   msckf_baseline_n_ = params.msckf_baseline / (params.img_width * params.cam_fx);
 
   // Set up tracker and track manager
-  const TrackManager track_manager(cam, msckf_baseline_n_, xvio_perf_logger);
+  const TrackManager track_manager(cam, msckf_baseline_n_, xvio_perf_logger_);
   params_ = params;
   camera_ = cam;
   tracker_ = tracker;
@@ -54,7 +57,7 @@ void EKLTVIO::setUp(const x::Params &params, const XVioPerformanceLoggerPtr& xvi
 
   // sets also EKLT params in viewer and optimizer class
   eklt_tracker_.setParams(params);
-  eklt_tracker_.setPerfLogger(perf_logger);
+  eklt_tracker_.setPerfLogger(eklt_perf_logger_);
   eklt_tracker_.setCamera(camera_);
 
   // Set up EKLTVIO state manager

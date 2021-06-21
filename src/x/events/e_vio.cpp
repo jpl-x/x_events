@@ -23,6 +23,7 @@
 // if Boost was compiled with BOOST_NO_EXCEPTIONS defined, it expects a user
 // defined trow_exception function, so define a dummy here, if this is the case
 #include <exception>
+#include <utility>
 
 using namespace x;
 
@@ -34,8 +35,9 @@ void throw_exception(std::exception const & e) {}; // user defined
 }
 
 
-EVIO::EVIO()
-  : ekf_ { Ekf(vio_updater_) }
+EVIO::EVIO(XVioPerformanceLoggerPtr  xvio_perf_logger)
+  : ekf_(vio_updater_)
+  , xvio_perf_logger_(std::move(xvio_perf_logger))
 {
   // Initialize with invalid last range measurement
   // todo: Replace -1 with -min_delay
@@ -54,7 +56,7 @@ bool EVIO::isInitialized() const {
   return ekf_.getInitStatus() == InitStatus::kInitialized;
 }
 
-void EVIO::setUp(const x::Params& params, const XVioPerformanceLoggerPtr& xvio_perf_logger) {
+void EVIO::setUp(const x::Params& params) {
   const x::Camera cam(params.cam_fx, params.cam_fy, params.cam_cx, params.cam_cy, params.cam_distortion_model,
                       params.cam_distortion_parameters, params.img_width, params.img_height);
   const x::Tracker tracker(cam, params.fast_detection_delta, params.non_max_supp, params.block_half_length,
@@ -65,7 +67,7 @@ void EVIO::setUp(const x::Params& params, const XVioPerformanceLoggerPtr& xvio_p
   msckf_baseline_n_ = params.msckf_baseline / (params.img_width * params.cam_fx);
 
   // Set up tracker and track manager
-  const TrackManager track_manager(cam, msckf_baseline_n_, xvio_perf_logger);
+  const TrackManager track_manager(cam, msckf_baseline_n_, xvio_perf_logger_);
   params_ = params;
   camera_ = cam;
   tracker_ = tracker;
@@ -211,7 +213,7 @@ State EVIO::processMatchesMeasurement(double timestamp,
 }
 
 State EVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr,
-                                    cv::Mat& event_img)
+                                     TiledImage& match_img, TiledImage& event_img)
 {
 #ifdef DEBUG
   std::cout << events_ptr->events.size() << " events at timestamp "
@@ -260,6 +262,7 @@ State EVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr,
   if(updated_state.getTime() != kInvalid)
     updated_state.setTime(image_time);
 
+  match_img = vio_updater_.getMatchImage();
   event_img = vio_updater_.getFeatureImage();
 
   return updated_state;

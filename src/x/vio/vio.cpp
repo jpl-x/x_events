@@ -37,8 +37,8 @@ void throw_exception(std::exception const & e) {}; // user defined
 }
 
 
-VIO::VIO() 
-  : ekf_ { Ekf(vio_updater_) }
+VIO::VIO(const XVioPerformanceLoggerPtr& xvio_perf_logger)
+  : ekf_ { Ekf(vio_updater_), xvio_perf_logger_(xvio_perf_logger) }
 {
   // Initialize with invalid last range measurement
   // todo: Replace -1 with -min_delay
@@ -51,13 +51,15 @@ VIO::VIO()
   x::SunAngleMeasurement no_measurement_sun;
   no_measurement_sun.timestamp = -1;
   last_angle_measurement_ = no_measurement_sun;
+
+  xvio_perf_logger_ = xvio_perf_logger;
 }
 
 bool VIO::isInitialized() const {
   return ekf_.getInitStatus() == InitStatus::kInitialized;
 }
 
-void VIO::setUp(const x::Params& params, const XVioPerformanceLoggerPtr& xvio_perf_logger) {
+void VIO::setUp(const x::Params& params) {
   const x::Camera cam(params.cam_fx, params.cam_fy, params.cam_cx, params.cam_cy, params.cam_distortion_model,
                       params.cam_distortion_parameters, params.img_width, params.img_height);
   const x::Tracker tracker(cam, params.fast_detection_delta, params.non_max_supp, params.block_half_length,
@@ -68,7 +70,7 @@ void VIO::setUp(const x::Params& params, const XVioPerformanceLoggerPtr& xvio_pe
   msckf_baseline_n_ = params.msckf_baseline / (params.img_width * params.cam_fx);
 
   // Set up tracker and track manager
-  const TrackManager track_manager(cam, msckf_baseline_n_, xvio_perf_logger);
+  const TrackManager track_manager(cam, msckf_baseline_n_, xvio_perf_logger_);
   params_ = params;
   camera_ = cam;
   tracker_ = tracker;

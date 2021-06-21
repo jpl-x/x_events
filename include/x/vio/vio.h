@@ -17,6 +17,7 @@
 #ifndef X_VIO_VIO_H_
 #define X_VIO_VIO_H_
 
+#include <x/vio/abstract_vio.h>
 #include <x/vio/types.h>
 #include <x/vio/vio_updater.h>
 #include <x/vio/state_manager.h>
@@ -32,12 +33,12 @@
 
 
 namespace x {
-  class VIO
+  class VIO : public AbstractVio
   {
     public:
-      VIO();
+      explicit VIO(const XVioPerformanceLoggerPtr& xvio_perf_logger = nullptr);
       bool isInitialized() const;
-      void setUp(const Params& params, const XVioPerformanceLoggerPtr& xvio_perf_logger = nullptr);
+      void setUp(const Params& params) override;
       void setLastRangeMeasurement(RangeMeasurement range_measurement);
       void setLastSunAngleMeasurement(SunAngleMeasurement angle_measurement);
       void initAtTime(double now);
@@ -52,10 +53,7 @@ namespace x {
        * @param[in] a_m Specific force (accelerometer).
        * @return The propagated state.
        */
-      State processImu(const double timestamp,
-          const unsigned int seq,
-          const Vector3& w_m,
-          const Vector3& a_m);
+      State processImu(double timestamp, unsigned int seq, const Vector3& w_m, const Vector3& a_m) override;
 
       /**
        * Creates an update measurement from image and pass it to EKF.
@@ -67,10 +65,7 @@ namespace x {
        * @param[out] feature_img Track manager image output.
        * @return The updated state, or invalide if the update could not happen.
        */
-      State processImageMeasurement(double timestamp,
-                                    const unsigned int seq,
-                                    TiledImage& match_img,
-                                    TiledImage& feature_img);
+      State processImageMeasurement(double timestamp, unsigned int seq, TiledImage& match_img, TiledImage& feature_img);
 
       /**
        * Creates an update measurement from visual matches and pass it to EKF.
@@ -83,7 +78,7 @@ namespace x {
        * @return The updated state, or invalid if the update could not happen.
        */
       State processMatchesMeasurement(double timestamp,
-                                      const unsigned int seq,
+                                      unsigned int seq,
                                       const std::vector<double>& match_vector,
                                       TiledImage& match_img,
                                       TiledImage& feature_img);
@@ -102,8 +97,7 @@ namespace x {
        * @param[in] state Input state.
        * @return A vector with the 3D cartesian coordinates.
        */
-      std::vector<Vector3>
-        computeSLAMCartesianFeaturesForState(const State& state);
+      std::vector<Vector3> computeSLAMCartesianFeaturesForState(const State& state);
 
     private:
       /**
@@ -125,7 +119,7 @@ namespace x {
       /**
        * Minimum baseline for MSCKF (in normalized plane).
        */
-      double msckf_baseline_n_;
+      double msckf_baseline_n_ = -1.0;
 
       Camera camera_;
       Tracker tracker_;
@@ -133,6 +127,8 @@ namespace x {
       StateManager state_manager_;
       RangeMeasurement last_range_measurement_;
       SunAngleMeasurement last_angle_measurement_;
+
+      XVioPerformanceLoggerPtr xvio_perf_logger_;
 
       /**
        * Import a feature match list from a std::vector.
