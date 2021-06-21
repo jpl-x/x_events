@@ -37,8 +37,9 @@ void throw_exception(std::exception const & e) {}; // user defined
 }
 
 
-VIO::VIO(const XVioPerformanceLoggerPtr& xvio_perf_logger)
-  : ekf_ { Ekf(vio_updater_), xvio_perf_logger_(xvio_perf_logger) }
+VIO::VIO(XVioPerformanceLoggerPtr xvio_perf_logger)
+  : ekf_(vio_updater_)
+  , xvio_perf_logger_(std::move(xvio_perf_logger))
 {
   // Initialize with invalid last range measurement
   // todo: Replace -1 with -min_delay

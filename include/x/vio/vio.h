@@ -36,7 +36,7 @@ namespace x {
   class VIO : public AbstractVio
   {
     public:
-      explicit VIO(const XVioPerformanceLoggerPtr& xvio_perf_logger = nullptr);
+      explicit VIO(XVioPerformanceLoggerPtr xvio_perf_logger = nullptr);
       bool isInitialized() const;
       void setUp(const Params& params) override;
       void setLastRangeMeasurement(RangeMeasurement range_measurement);
