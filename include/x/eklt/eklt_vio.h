@@ -27,7 +27,7 @@ namespace x {
 
     bool isInitialized() const;
 
-    void setUp(const Params &params, const EkltParams &eklt_params,
+    void setUp(const Params &params,
                const XVioPerformanceLoggerPtr& xvio_perf_logger = nullptr,
                const EkltPerformanceLoggerPtr& perf_logger = nullptr);
 
@@ -119,7 +119,7 @@ namespace x {
     bool initialized_{false};
 
     // counts the asynchronous state updates triggered by the EKLT tracker
-    int seq;
+    int seq_;
   };
 } // namespace x
 

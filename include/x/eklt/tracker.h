@@ -22,13 +22,13 @@ namespace x {
  */
   class EkltTracker {
   public:
-    explicit EkltTracker(Camera camera, Viewer &viewer, EkltParams params = {},
+    explicit EkltTracker(Camera camera, Viewer &viewer, Params params = {},
                          EkltPerformanceLoggerPtr perf_logger = nullptr);
 
     /**
      * @brief updates the EKLT parameters in the tracker as well as in the associated viewer and optimizer
      */
-    void setParams(const EkltParams& params);
+    void setParams(const Params& params);
 
     void setPerfLogger(const EkltPerformanceLoggerPtr& perf_logger);
 
@@ -160,7 +160,7 @@ namespace x {
      */
     inline bool shouldDiscard(Patch &patch) {
       bool out_of_fov = isPointOutOfView(patch.center_);
-      bool exceeded_error = patch.tracking_quality_ < params_.tracking_quality;
+      bool exceeded_error = patch.tracking_quality_ < params_.eklt_tracking_quality;
 
       return exceeded_error || out_of_fov;
     }
@@ -193,7 +193,7 @@ namespace x {
     }
 
     Camera camera_;
-    EkltParams params_;
+    Params params_;
     EkltPerformanceLoggerPtr perf_logger_;
     cv::Size sensor_size_;
 

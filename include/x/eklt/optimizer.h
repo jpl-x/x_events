@@ -11,14 +11,14 @@ namespace x {
    * @brief The Optimizer performs optimization to find the best warp and optical flow for each patch.
    */
   struct Optimizer {
-    explicit Optimizer(EkltParams params, EkltPerformanceLoggerPtr perf_logger = nullptr);
+    explicit Optimizer(Params params, EkltPerformanceLoggerPtr perf_logger = nullptr);
 
     ~Optimizer();
 
     /**
      * @brief updates the EKLT parameters
      */
-    void setParams(const EkltParams &params);
+    void setParams(const Params &params);
 
     void setPerfLogger(const EkltPerformanceLoggerPtr& perf_logger);
 
@@ -40,7 +40,7 @@ namespace x {
      */
     void optimizeParameters(const cv::Mat &event_frame, Patch &patch, double t);
 
-    EkltParams params_;
+    Params params_;
     EkltPerformanceLoggerPtr perf_logger_;
 
     ceres::Problem::Options prob_options;

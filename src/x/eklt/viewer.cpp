@@ -3,11 +3,11 @@
 
 using namespace x;
 
-Viewer::Viewer(EkltParams params)
+Viewer::Viewer(Params params)
   : params_(std::move(params)), got_first_image_(false) {
 }
 
-void Viewer::setParams(const EkltParams &params) {
+void Viewer::setParams(const Params &params) {
   params_ = params;
 }
 
@@ -37,7 +37,7 @@ void Viewer::initViewData(double t) {
 //  std::thread viewerThread(&Viewer::displayTracks, this);
 //  viewerThread.detach();
 
-  int num_patches = params_.max_corners;
+  int num_patches = params_.eklt_max_corners;
   feature_track_data_.patches.reserve(num_patches);
   feature_track_data_.t = t;
   feature_track_data_.t_init = t;
@@ -62,7 +62,7 @@ void Viewer::initViewData(double t) {
 //    //if the first image was not yet received do not do anything
 //    // otherwise prepare feature tracking preview
 ////        r.sleep(); // TODO: find alternative (or move to x_vio_ros wrapper)
-//    if (!got_first_image_ || !params_.display_features) {
+//    if (!got_first_image_ || !params_.eklt_display_features) {
 //      continue;
 //    }
 //    {
@@ -76,9 +76,9 @@ void Viewer::initViewData(double t) {
 
 void Viewer::drawOnImage(FeatureTrackData &data, cv::Mat &view, const cv::Mat &image) {
   CHECK(image.size[0] > 0);
-  const double &scale = params_.scale;
-  const double &arrow_length = params_.arrow_length;
-  const int &patch_size = params_.patch_size;
+  const double &scale = params_.eklt_scale;
+  const double &arrow_length = params_.eklt_arrow_length;
+  const int &patch_size = params_.eklt_patch_size;
 
   view.setTo(0);
 
@@ -142,14 +142,14 @@ void Viewer::drawOnImage(FeatureTrackData &data, cv::Mat &view, const cv::Mat &i
     std::vector<cv::Point> corners = {scale * top_left_warped, scale * top_right_warped, scale * bottom_right_warped,
                                       scale * bottom_left_warped};
 
-    if (patch.initialized_ && params_.display_feature_patches) {
+    if (patch.initialized_ && params_.eklt_display_feature_patches) {
       cv::polylines(view, corners, true, patch.color_, 2);
       cv::line(view, scale * patch.center_, scale * top_middle_warped, patch.color_, 2);
     }
 
     // draw feature ids
     cv::Point text_pos = cv::Point(patch.center_.x - half_patch_size + 2, patch.center_.y - half_patch_size + 8);
-    if (params_.display_feature_id) {
+    if (params_.eklt_display_feature_id) {
 #if CV_MAJOR_VERSION == 4
       cv::putText(view, std::to_string(i), scale * text_pos, cv::FONT_HERSHEY_COMPLEX_SMALL,
                   scale * 0.4, cv::Scalar(255, 0, 0), 2, cv::LINE_AA);
@@ -164,7 +164,7 @@ void Viewer::drawOnImage(FeatureTrackData &data, cv::Mat &view, const cv::Mat &i
 }
 
 void Viewer::renderView() {
-  if (!got_first_image_ || !params_.display_features)
+  if (!got_first_image_ || !params_.eklt_display_features)
     return;
   drawOnImage(feature_track_data_, feature_track_view_, feature_track_data_.image);
 }

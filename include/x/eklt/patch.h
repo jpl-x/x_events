@@ -33,7 +33,7 @@ struct Patch
    * @param half_size half size of the patch side length
    * @param t_init time stamp of the image where the corner was extracted
    */
-    Patch(const cv::Point2d& center, double t_init, const x::EkltParams& params, x::Camera* cam)
+    Patch(const cv::Point2d& center, double t_init, const x::Params& params, x::Camera* cam)
       : init_center_(center)
       , previous_center_(center)
       , flow_angle_(0)
@@ -49,18 +49,18 @@ struct Patch
     {
         warping_ = cv::Mat::eye(3,3,CV_64F);
 
-        patch_size_ = params.patch_size;
-        half_size_ = (params.patch_size - 1) / 2;
-        batch_size_ = params.batch_size;
-        update_rate_ = params.update_every_n_events;
-        ekf_feature_interpolation_ = params.ekf_feature_interpolation;
-        ekf_feature_extrapolation_limit_ = params.ekf_feature_extrapolation_limit;
+        patch_size_ = params.eklt_patch_size;
+        half_size_ = (params.eklt_patch_size - 1) / 2;
+        batch_size_ = params.eklt_batch_size;
+        update_rate_ = params.eklt_update_every_n_events;
+        ekf_feature_interpolation_ = params.eklt_ekf_feature_interpolation;
+        ekf_feature_extrapolation_limit_ = params.eklt_ekf_feature_extrapolation_limit;
 
         reset(init_center_, t_init);
     }
 
     // TODO find alternative to ros::Time::now().toSec() -- now -1
-    explicit Patch(const x::EkltParams& params, x::Camera* cam) : Patch(cv::Point2f(-1,-1), -1, params, cam)
+    explicit Patch(const x::Params& params, x::Camera* cam) : Patch(cv::Point2f(-1,-1), -1, params, cam)
     {
         // contstructor for initializing lost features
         lost_ = true;
