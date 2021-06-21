@@ -14,9 +14,12 @@ set(UNIT_TESTS false) # Set true to enable unit tests
 
 cmake_minimum_required(VERSION 2.8.3)
 project(x)
-set (CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE Release)
 
-#set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Og") # REMOVE ME LATER
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Og") # REMOVE ME LATER
+
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Og -fno-omit-frame-pointer -fsanitize=address") # REMOVE ME LATER
+#set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -g -Og -fno-omit-frame-pointer -fsanitize=address") # REMOVE ME LATER
 
 # Set definitions
 if(DUAL_THREAD)

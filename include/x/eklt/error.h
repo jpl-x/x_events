@@ -51,7 +51,7 @@ struct CostFunctionConfig
 struct ErrorRotation
 {
     
-    ErrorRotation(CostFunctionConfig* config) : config_(config) {}
+    explicit ErrorRotation(std::shared_ptr<CostFunctionConfig> config) : config_(std::move(config)) {}
 
     static void getP0(double p[], const cv::Mat& warp)
     {
@@ -114,7 +114,7 @@ struct ErrorRotation
         }
     }
 
-    CostFunctionConfig* config_;
+  std::shared_ptr<CostFunctionConfig> config_;
 };
 
 
@@ -123,13 +123,12 @@ struct Generator
   static ceres::CostFunction* Create(cv::Point2d feature, 
                                      cv::Point2d init_feature, 
                                      const cv::Mat* event_frame, 
-                                     Interpolator* grad_interp, 
-                                     ErrorRotation* &functor)
+                                     Interpolator* grad_interp)
   {
-      auto* config = new CostFunctionConfig(std::move(feature), std::move(init_feature), event_frame, grad_interp);
-      functor = new ErrorRotation(config);
+      auto config = std::make_shared<CostFunctionConfig>(std::move(feature), std::move(init_feature), event_frame, grad_interp);
       int size = event_frame->size[0]*event_frame->size[0];
-      return new ceres::AutoDiffCostFunction<ErrorRotation, ceres::DYNAMIC, 3, 1>(functor, size);
+      // Ceres takes ownership of these allocations
+      return new ceres::AutoDiffCostFunction<ErrorRotation, ceres::DYNAMIC, 3, 1>(new ErrorRotation(config), size);
   }
 };
 

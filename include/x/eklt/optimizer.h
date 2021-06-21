@@ -45,12 +45,10 @@ namespace x {
 
     ceres::Problem::Options prob_options;
     ceres::Solver::Options solver_options;
-    ceres::LossFunction *loss_function;
 
     OptimizerData optimizer_data_;
 
     int patch_size_;
-    ceres::CostFunction *cost_function_;
   };
 
 }
