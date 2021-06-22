@@ -112,14 +112,14 @@ void Viewer::drawOnImage(FeatureTrackData &data, cv::Mat &view, const cv::Mat &i
       continue;
 
     // draw patch center and lk feature with line between them
-    cv::drawMarker(view, scale * patch.center_, patch.color_, cv::MARKER_CROSS, 10, 1);
+    cv::drawMarker(view, scale * patch.getCenter(), patch.color_, cv::MARKER_CROSS, 10, 1);
 
     // draw arrow
     cv::Point2d flow_arrow_tip =
       patch.init_center_ + arrow_length * cv::Point2d(std::cos(patch.flow_angle_), std::sin(patch.flow_angle_));
     cv::Point2d warped_flow_arrow_tip;
     patch.warpPixel(flow_arrow_tip, warped_flow_arrow_tip);
-    cv::arrowedLine(view, scale * patch.center_, scale * warped_flow_arrow_tip, cv::Scalar(255, 255, 0), 1, 8, 0,
+    cv::arrowedLine(view, scale * patch.getCenter(), scale * warped_flow_arrow_tip, cv::Scalar(255, 255, 0), 1, 8, 0,
                     0.1);
 
     int half_patch_size = (patch_size - 1) / 2;
@@ -144,11 +144,11 @@ void Viewer::drawOnImage(FeatureTrackData &data, cv::Mat &view, const cv::Mat &i
 
     if (patch.initialized_ && params_.eklt_display_feature_patches) {
       cv::polylines(view, corners, true, patch.color_, 2);
-      cv::line(view, scale * patch.center_, scale * top_middle_warped, patch.color_, 2);
+      cv::line(view, scale * patch.getCenter(), scale * top_middle_warped, patch.color_, 2);
     }
 
     // draw feature ids
-    cv::Point text_pos = cv::Point(patch.center_.x - half_patch_size + 2, patch.center_.y - half_patch_size + 8);
+    cv::Point text_pos = cv::Point(patch.getCenter().x - half_patch_size + 2, patch.getCenter().y - half_patch_size + 8);
     if (params_.eklt_display_feature_id) {
 #if CV_MAJOR_VERSION == 4
       cv::putText(view, std::to_string(i), scale * text_pos, cv::FONT_HERSHEY_COMPLEX_SMALL,

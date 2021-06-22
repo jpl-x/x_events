@@ -35,7 +35,7 @@ namespace x {
     void setCamera(const x::Camera& camera) {
       camera_ = camera;
       for (auto& patch : patches_) {
-        patch.camera_ptr_ = &camera_;
+        patch.setCamera(&camera_);
       }
     }
 
@@ -159,7 +159,7 @@ namespace x {
      * @brief checks if the optimization cost is above 1.6 (as described in the paper)
      */
     inline bool shouldDiscard(Patch &patch) {
-      bool out_of_fov = isPointOutOfView(patch.center_);
+      bool out_of_fov = isPointOutOfView(patch.getCenter());
       bool exceeded_error = patch.tracking_quality_ < params_.eklt_tracking_quality;
 
       return exceeded_error || out_of_fov;
@@ -222,7 +222,7 @@ namespace x {
     std::vector<int> lost_indices_;
 
     // delegation
-    Viewer *viewer_ptr_ = NULL;
+    Viewer *viewer_ptr_ = nullptr;
     Optimizer optimizer_;
 
     // mutex
@@ -240,7 +240,8 @@ namespace x {
 
       if (perf_logger_)
         perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.id_, EkltTrackUpdateType::Lost,
-                                             patch.t_curr_, patch.center_.x, patch.center_.y, patch.flow_angle_);
+                                             patch.getCurrentTime(), patch.getCenter().x, patch.getCenter().y,
+                                             patch.flow_angle_);
     }
   };
 

@@ -63,8 +63,8 @@ void EkltTracker::initPatches(Patches &patches, std::vector<int> &lost_indices, 
       patch_gradients_[i] = std::make_pair(cv::Mat::zeros(2 * p + 1, 2 * p + 1, CV_64F),
                                            cv::Mat::zeros(2 * p + 1, 2 * p + 1, CV_64F));
     } else {
-      const int x_min = patch.center_.x;
-      const int y_min = patch.center_.y;
+      const int x_min = patch.getCenter().x;
+      const int y_min = patch.getCenter().y;
 
       patch_gradients_[i] = std::make_pair(
         I_x_padded.rowRange(y_min, y_min + 2 * p + 1).colRange(x_min, x_min + 2 * p + 1).clone(),
@@ -155,7 +155,7 @@ bool EkltTracker::updatePatch(Patch &patch, const Event &event) {
   if (patch.lost_ ||
       (params_.eklt_bootstrap == "klt" && !patch.initialized_) ||
       !patch.contains(event.x, event.y) ||
-      patch.t_curr_ > event.ts)
+      patch.getCurrentTime() > event.ts)
     return false;
 
   patch.insert(event);
@@ -167,18 +167,18 @@ bool EkltTracker::updatePatch(Patch &patch, const Event &event) {
 
   // compute event frame according to equation (2) in the paper
   cv::Mat event_frame;
-  patch.getEventFramesAndReset(event_frame);
+  auto event_accumulation_timestamp = patch.getEventFrame(event_frame);
 
   // bootstrap using the events
   if (!patch.initialized_ && params_.eklt_bootstrap == "events")
     bootstrapFeatureEvents(patch, event_frame);
 
   // update feature position and recompute the adaptive batchsize
-  optimizer_.optimizeParameters(event_frame, patch, event.ts);
+  optimizer_.optimizeParameters(event_frame, patch, event.ts);  // might change to event_accumulation_timestamp
 
   if (perf_logger_)
     perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.id_, EkltTrackUpdateType::Update,
-                                         patch.t_curr_, patch.center_.x, patch.center_.y, patch.flow_angle_);
+                                         patch.getCurrentTime(), patch.getCenter().x, patch.getCenter().y, patch.flow_angle_);
 
   setBatchSize(patch, patch_gradients_[&patch - &patches_[0]].first, patch_gradients_[&patch - &patches_[0]].second,
                params_.eklt_displacement_px);
@@ -244,12 +244,12 @@ EkltTracker::resetPatches(Patches &new_patches, std::vector<int> &lost_indices, 
 
     // reset lost patches with new ones
     Patch &reset_patch = new_patches[i];
-    patches_[index].reset(reset_patch.center_, reset_patch.t_init_);
+    patches_[index].reset(reset_patch.getCenter(), reset_patch.t_init_);
     lost_indices.erase(lost_indices.begin() + i);
 
     // reinitialize the image gradients of new features
-    const int x_min = reset_patch.center_.x - p;
-    const int y_min = reset_patch.center_.y - p;
+    const int x_min = reset_patch.getCenter().x - p;
+    const int y_min = reset_patch.getCenter().y - p;
     cv::Mat p_I_x = I_x_padded.rowRange(y_min, y_min + 2 * p + 1).colRange(x_min, x_min + 2 * p + 1);
     cv::Mat p_I_y = I_y_padded.rowRange(y_min, y_min + 2 * p + 1).colRange(x_min, x_min + 2 * p + 1);
     patch_gradients_[index] = std::make_pair(p_I_x.clone(), p_I_y.clone());
@@ -274,10 +274,10 @@ void EkltTracker::extractPatches(Patches &patches, const int &num_patches, const
   for (Patch &patch: patches_) {
     if (patch.lost_) continue;
 
-    double min_x = std::fmax(patch.center_.x - min_distance, 0);
-    double max_x = std::fmin(patch.center_.x + min_distance, w - 1);
-    double min_y = std::fmax(patch.center_.y - min_distance, 0);
-    double max_y = std::fmin(patch.center_.y + min_distance, h - 1);
+    double min_x = std::fmax(patch.getCenter().x - min_distance, 0);
+    double max_x = std::fmin(patch.getCenter().x + min_distance, w - 1);
+    double min_y = std::fmax(patch.getCenter().y - min_distance, 0);
+    double max_y = std::fmin(patch.getCenter().y + min_distance, h - 1);
     mask.rowRange(min_y, max_y).colRange(min_x, max_x).setTo(0);
   }
 
@@ -304,7 +304,7 @@ void EkltTracker::extractPatches(Patches &patches, const int &num_patches, const
     Patch &patch = patches[patches.size() - 1];
     if (perf_logger_)
       perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.id_, EkltTrackUpdateType::Init,
-                                           patch.t_curr_, patch.center_.x, patch.center_.y, patch.flow_angle_);
+                                           patch.getCurrentTime(), patch.getCenter().x, patch.getCenter().y, patch.flow_angle_);
   }
 }
 
@@ -330,8 +330,8 @@ void EkltTracker::bootstrapFeatureKLT(Patch &patch, const cv::Mat &last_image, c
   patch.updateCenter(current_image_it_->first);
 
   // check if new patch has been lost due to leaving the fov
-  bool should_discard = bool(patch.center_.y < 0 || patch.center_.y >= sensor_size_.height || patch.center_.x < 0 ||
-                             patch.center_.x >= sensor_size_.width);
+  bool should_discard = bool(patch.getCenter().y < 0 || patch.getCenter().y >= sensor_size_.height || patch.getCenter().x < 0 ||
+                             patch.getCenter().x >= sensor_size_.width);
   if (should_discard) {
     patch.lost_ = true;
     lost_indices_.push_back(&patch - &patches_[0]);
@@ -339,7 +339,7 @@ void EkltTracker::bootstrapFeatureKLT(Patch &patch, const cv::Mat &last_image, c
     patch.initialized_ = true;
     if (perf_logger_)
       perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.id_, EkltTrackUpdateType::Bootstrap,
-                                           patch.t_curr_, patch.center_.x, patch.center_.y, patch.flow_angle_);
+                                           patch.getCurrentTime(), patch.getCenter().x, patch.getCenter().y, patch.flow_angle_);
   }
 }
 
@@ -492,11 +492,11 @@ MatchList EkltTracker::getMatchListFromPatches() {
     if (!p.lost_) {
       switch (params_.eklt_ekf_update_timestamp) {
         case EkltEkfUpdateTimestamp::PATCH_AVERAGE:
-          interpolation_time = (N * interpolation_time + p.t_curr_) / (N+1);
+          interpolation_time = (N * interpolation_time + p.getCurrentTime()) / (N+1);
           ++N;
           break;
         case EkltEkfUpdateTimestamp::PATCH_MAXIMUM:
-          interpolation_time = std::max(interpolation_time, p.t_curr_);
+          interpolation_time = std::max(interpolation_time, p.getCurrentTime());
           break;
       }
     }

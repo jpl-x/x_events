@@ -106,7 +106,7 @@ void Optimizer::optimizeParameters(const cv::Mat &event_frame, Patch &patch, dou
 
   // create cost functor that depends on the event frame, and current and initial
   // patch location
-  auto cost_function = Generator::Create(patch.center_,
+  auto cost_function = Generator::Create(patch.getCenter(),
                                      patch.init_center_,
                                      &event_frame,
                                      optimizer_data_[patch.t_init_].grad_interp_);
