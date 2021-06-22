@@ -31,7 +31,7 @@ namespace x {
 
     // default empty implementation
     virtual State processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr,
-                                           TiledImage &tracker_img, TiledImage &feature_img) {};
+                                           TiledImage &tracker_img, TiledImage &feature_img) { return x::State(); };
   };
 
 }

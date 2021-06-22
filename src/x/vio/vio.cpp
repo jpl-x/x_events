@@ -52,8 +52,6 @@ VIO::VIO(XVioPerformanceLoggerPtr xvio_perf_logger)
   x::SunAngleMeasurement no_measurement_sun;
   no_measurement_sun.timestamp = -1;
   last_angle_measurement_ = no_measurement_sun;
-
-  xvio_perf_logger_ = xvio_perf_logger;
 }
 
 bool VIO::isInitialized() const {

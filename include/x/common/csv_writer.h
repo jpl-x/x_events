@@ -59,7 +59,7 @@ namespace x {
    */
 
   template<class ... Types>
-  class CsvWriter : DebugMemory {
+  class CsvWriter : public DebugMemory {
   public:
     /**
      * Opens the passed 'filename' as file in write mode and writes the provided column names in the constructor
@@ -75,12 +75,7 @@ namespace x {
      * Writes the buffer in CSV-format to the open file.
      */
     void flush() override {
-      while (!buffer_.empty()) {
-        // expands variadic template types and forwards them to x::csv_write_row
-        std::apply([=](auto &&... args) { x::csv_write_row(outfile_, args...); }, buffer_.front());
-        buffer_.pop();
-      }
-      outfile_.flush();
+      flush_impl();
     }
 
     void addRow(const Types &... values) {
@@ -94,13 +89,23 @@ namespace x {
     }
 
     ~CsvWriter() override {
-      flush();
+      flush_impl();
       outfile_.close();
     }
 
   private:
     std::queue<std::tuple<Types...>> buffer_;
     std::ofstream outfile_;
+
+    // private non-virtual implementation to avoid calling virtual methods from destructor
+    void flush_impl() {
+      while (!buffer_.empty()) {
+        // expands variadic template types and forwards them to x::csv_write_row
+        std::apply([=](auto &&... args) { x::csv_write_row(outfile_, args...); }, buffer_.front());
+        buffer_.pop();
+      }
+      outfile_.flush();
+    }
   };
 
   template<class... Types>
