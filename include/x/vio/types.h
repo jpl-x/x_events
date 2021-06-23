@@ -83,6 +83,11 @@ namespace x
     PATCH_MAXIMUM,
   };
 
+  enum class EkltPatchTimestampAssignment : char {
+    LATEST_EVENT,
+    ACCUMULATED_EVENTS_CENTER,
+  };
+
   /**
    * User-defined parameters
    */
@@ -259,6 +264,7 @@ namespace x
 
     EkltEkfUpdateStrategy eklt_ekf_update_strategy = EkltEkfUpdateStrategy::EVERY_ROS_EVENT_MESSAGE;
     EkltEkfUpdateTimestamp eklt_ekf_update_timestamp = EkltEkfUpdateTimestamp::PATCH_AVERAGE;
+    EkltPatchTimestampAssignment eklt_patch_timestamp_assignment = EkltPatchTimestampAssignment::LATEST_EVENT;
     bool eklt_use_linlog_scale = false; // whether to use piecewise lin-log scale instead of log(img+log_eps)
   };
 

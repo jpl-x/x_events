@@ -111,7 +111,15 @@ bool EkltTracker::updatePatch(EkltPatch &patch, const Event &event) {
     bootstrapFeatureEvents(patch, event_frame);
 
   // update feature position and recompute the adaptive batchsize
-  optimizer_.optimizeParameters(event_frame, patch, event.ts);  // might change to event_accumulation_timestamp
+
+  switch (params_.eklt_patch_timestamp_assignment) {
+    case EkltPatchTimestampAssignment::LATEST_EVENT:
+      optimizer_.optimizeParameters(event_frame, patch, event.ts);
+      break;
+    case EkltPatchTimestampAssignment::ACCUMULATED_EVENTS_CENTER:
+      optimizer_.optimizeParameters(event_frame, patch, event_accumulation_timestamp);
+      break;
+  }
 
   if (perf_logger_)
     perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.id_, EkltTrackUpdateType::Update,
