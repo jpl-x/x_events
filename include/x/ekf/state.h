@@ -33,7 +33,7 @@ namespace x
     kIdxQ = 6,
     kIdxBw = 9,
     kIdxBa = 12,
-    kSizeCoreErr = 21
+    kSizeCoreErr = 15
   };
 
   /**
@@ -115,7 +115,7 @@ namespace x
       Vector3 getPositionExtrinsics() const;
 
       /**
-       * Assembles and returns 23 dynamic states.
+       * Assembles and returns the 16 dynamic states.
        *
        * @return The core state vector.
        */
@@ -131,7 +131,7 @@ namespace x
       Matrix getPoseCovariance() const;
 
       /**
-       * Assembles and returns 21x21 covariance matrix of the dynamic state errors.
+       * Assembles and returns 15x15 covariance matrix of the dynamic state errors.
        *
        * @return The dynamic state covariance matrix.
        */

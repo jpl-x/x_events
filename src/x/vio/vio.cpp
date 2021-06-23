@@ -233,19 +233,9 @@ void VIO::initAtTime(double now) {
 
   //////////////////////////////// xEKF INIT ///////////////////////////////////
  
-  // Initial core covariance matrix
-  // TODO(jeff) remove unused IMU extrinsics states
-  const double sigma_dtheta_ic_x = 1.0 * M_PI / 180.0;
-  const double sigma_dtheta_ic_y = 1.0 * M_PI / 180.0;
-  const double sigma_dtheta_ic_z = 1.0 * M_PI / 180.0;
-  const double sigma_dp_ic_x = 0.01;
-  const double sigma_dp_ic_y = 0.01;
-  const double sigma_dp_ic_z = 0.01;
-
+  // Initial vision state estimates and uncertainties are all zero
   const size_t n_poses_state = params_.n_poses_max;
   const size_t n_features_state = params_.n_slam_features_max;
-
-  // Initial vision state estimates and uncertainties are all zero
   const Matrix p_array = Matrix::Zero(n_poses_state * 3, 1);
   const Matrix q_array = Matrix::Zero(n_poses_state * 4, 1);
   const Matrix f_array = Matrix::Zero(n_features_state * 3, 1);
@@ -261,8 +251,6 @@ void VIO::initAtTime(double now) {
                 params_.sigma_dtheta * M_PI / 180.0,
                 params_.sigma_dbw * M_PI / 180.0,
                 params_.sigma_dba,
-                sigma_dtheta_ic_x, sigma_dtheta_ic_y, sigma_dtheta_ic_z,
-                sigma_dp_ic_x, sigma_dp_ic_y, sigma_dp_ic_z,
                 sigma_p_array, sigma_q_array, sigma_f_array;
 
   const Eigen::VectorXd cov_diag = sigma_diag.array() * sigma_diag.array();

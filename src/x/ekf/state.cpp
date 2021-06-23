@@ -103,7 +103,7 @@ Vector3 State::getPositionExtrinsics() const {
 }
 
 Eigen::VectorXd State::getDynamicStates() const {
-  Eigen::VectorXd dyn_states(23);
+  Eigen::VectorXd dyn_states(kSizeCoreErr+1);
 
   // Fill in the states
   dyn_states.segment(0,3) = p_;
