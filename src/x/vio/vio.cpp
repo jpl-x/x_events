@@ -234,22 +234,7 @@ void VIO::initAtTime(double now) {
   //////////////////////////////// xEKF INIT ///////////////////////////////////
  
   // Initial core covariance matrix
-  // TODO(jeff) read from params
-  const double sigma_dp_x = 0.0;
-  const double sigma_dp_y = 0.0;
-  const double sigma_dp_z = 0.0;
-  const double sigma_dv_x = 0.05;
-  const double sigma_dv_y = 0.05;
-  const double sigma_dv_z = 0.05;
-  const double sigma_dtheta_x = 3.0*M_PI/180.0;
-  const double sigma_dtheta_y = 3.0*M_PI/180.0;
-  const double sigma_dtheta_z = 3.0*M_PI/180.0;
-  const double sigma_dbw_x = 6.0*M_PI/180.0;
-  const double sigma_dbw_y = 6.0*M_PI/180.0;
-  const double sigma_dbw_z = 6.0*M_PI/180.0;
-  const double sigma_dba_x = 0.3;
-  const double sigma_dba_y = 0.3;
-  const double sigma_dba_z = 0.3;
+  // TODO(jeff) remove unused IMU extrinsics states
   const double sigma_dtheta_ic_x = 1.0 * M_PI / 180.0;
   const double sigma_dtheta_ic_y = 1.0 * M_PI / 180.0;
   const double sigma_dtheta_ic_z = 1.0 * M_PI / 180.0;
@@ -271,11 +256,11 @@ void VIO::initAtTime(double now) {
   // Construct initial covariance matrix
   const size_t n_err = kSizeCoreErr + n_poses_state * 6 + n_features_state * 3;
   Eigen::VectorXd sigma_diag(n_err);
-  sigma_diag << sigma_dp_x, sigma_dp_y, sigma_dp_z,
-                sigma_dv_x, sigma_dv_y, sigma_dv_z,
-                sigma_dtheta_x, sigma_dtheta_y, sigma_dtheta_z,
-                sigma_dbw_x, sigma_dbw_y, sigma_dbw_z,
-                sigma_dba_x, sigma_dba_y, sigma_dba_z,
+  sigma_diag << params_.sigma_dp,
+                params_.sigma_dv,
+                params_.sigma_dtheta * M_PI / 180.0,
+                params_.sigma_dbw * M_PI / 180.0,
+                params_.sigma_dba,
                 sigma_dtheta_ic_x, sigma_dtheta_ic_y, sigma_dtheta_ic_z,
                 sigma_dp_ic_x, sigma_dp_ic_y, sigma_dp_ic_z,
                 sigma_p_array, sigma_q_array, sigma_f_array;
