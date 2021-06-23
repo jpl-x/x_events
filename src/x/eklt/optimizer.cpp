@@ -91,7 +91,7 @@ void Optimizer::precomputeLogImageArray(const Patches &patches, const ImageBuffe
   optimizer_data_[t] = OptimizerDatum(grad, image_it->second, patches.size());
 }
 
-void Optimizer::optimizeParameters(const cv::Mat &event_frame, Patch &patch, double t) {
+void Optimizer::optimizeParameters(const cv::Mat &event_frame, EkltPatch &patch, double t) {
   auto start = profiler::now();
   EASY_FUNCTION();
   double norm = 0;

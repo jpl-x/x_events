@@ -7,7 +7,7 @@
 #include <x/vio/tools.h>
 #include <x/vision/types.h>
 
-#include <x/eklt/tracker.h>
+#include <x/eklt/eklt_tracker.h>
 
 #include <iostream>
 

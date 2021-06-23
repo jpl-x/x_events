@@ -106,7 +106,7 @@ void Viewer::drawOnImage(FeatureTrackData &data, cv::Mat &view, const cv::Mat &i
 
   // draw patches
   for (int i = 0; i < data.patches.size(); i++) {
-    Patch &patch = data.patches[i];
+    EkltPatch &patch = data.patches[i];
 
     if (patch.lost_)
       continue;

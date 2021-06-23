@@ -4,7 +4,7 @@
 //#include <gflags/gflags.h>
 
 #include <x/eklt/viewer.h>
-#include <x/eklt/tracker.h>
+#include <x/eklt/eklt_tracker.h>
 //
 //// feature detection
 //DEFINE_int32(max_corners, 100, \

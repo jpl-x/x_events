@@ -11,10 +11,10 @@
 
 namespace x {
 
-  class AsyncFeatureTrack {
+  class AsyncPatch {
   public:
 
-    AsyncFeatureTrack(const x::Params& params, x::Camera* cam)
+    AsyncPatch(const x::Params& params, x::Camera* cam)
     : camera_ptr_(cam) {
       ekf_feature_interpolation_ = params.eklt_ekf_feature_interpolation;
       ekf_feature_extrapolation_limit_ = params.eklt_ekf_feature_extrapolation_limit;

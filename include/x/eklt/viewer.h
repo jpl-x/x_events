@@ -4,8 +4,8 @@
 
 #include <opencv2/core/core.hpp>
 
-#include "patch.h"
-#include "types.h"
+#include <x/eklt/eklt_patch.h>
+#include <x/eklt/types.h>
 
 
 namespace x {

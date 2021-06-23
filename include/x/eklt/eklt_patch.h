@@ -12,20 +12,20 @@
 
 #include <easy/profiler.h>
 
-#include <x/eklt/async_feature_track.h>
+#include <x/eklt/async_patch.h>
 
 
 namespace x
 {
 
 /**
- * @brief The Patch struct which corresponds to an image patch defined by its center (feature position) and
+ * @brief The EkltPatch struct which corresponds to an image patch defined by its center (feature position) and
  * dimension (patch size)
  */
-struct Patch : public AsyncFeatureTrack
+struct EkltPatch : public AsyncPatch
 {
     /**
-   * @brief Patch constructor for patch. Is defined by its center, linear warping matrix, half size ( half the patch
+   * @brief EkltPatch constructor for patch. Is defined by its center, linear warping matrix, half size ( half the patch
    * side length and the direction of optical flow in its region.
    * @param center Position of the patch defined by the location of the associated corner
    * @param warping Affine 3x3 matrix describing the current transformation taking pixels in the patch to the initial image.
@@ -33,8 +33,8 @@ struct Patch : public AsyncFeatureTrack
    * @param half_size half size of the patch side length
    * @param t_init time stamp of the image where the corner was extracted
    */
-    Patch(const cv::Point2d& center, double t_init, const x::Params& params, x::Camera* cam)
-      : AsyncFeatureTrack(params, cam)
+    EkltPatch(const cv::Point2d& center, double t_init, const x::Params& params, x::Camera* cam)
+      : AsyncPatch(params, cam)
       , init_center_(center)
       , flow_angle_(0)
       , event_counter_(0)
@@ -55,7 +55,7 @@ struct Patch : public AsyncFeatureTrack
     }
 
     // TODO find alternative to ros::Time::now().toSec() -- now -1
-    explicit Patch(const x::Params& params, x::Camera* cam) : Patch(cv::Point2f(-1,-1), -1, params, cam)
+    explicit EkltPatch(const x::Params& params, x::Camera* cam) : EkltPatch(cv::Point2f(-1, -1), -1, params, cam)
     {
         // contstructor for initializing lost features
         lost_ = true;

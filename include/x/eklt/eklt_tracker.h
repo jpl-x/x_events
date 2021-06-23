@@ -8,7 +8,7 @@
 #include <fstream>
 #include <x/vision/camera.h>
 
-#include "patch.h"
+#include "eklt_patch.h"
 #include "optimizer.h"
 #include "viewer.h"
 
@@ -61,33 +61,6 @@ namespace x {
     void init(const ImageBuffer::iterator &image_it);
 
     /**
-     * @brief working thread
-     */
-    void processEvents();
-
-    /**
-     * @brief Blocks while there are no events in buffer
-     * @param next event
-    */
-    inline void waitForEvent(Event &ev) {
-//      EDIT: make this ROS free
-//        static ros::Rate r(100);
-
-      while (true) {
-        {
-          std::unique_lock<std::mutex> lock(events_mutex_);
-          if (events_.empty()) {
-            ev = events_.front();
-            events_.pop_front();
-            return;
-          }
-        }
-//            r.sleep();  // TODO: find alternative (or move to x_vio_ros wrapper)
-        VLOG_EVERY_N(1, 30) << "Waiting for events.";
-      }
-    }
-
-    /**
     * @brief Always assigns image to the first image before time  t_start
     */
     inline bool updateFirstImageBeforeTime(double t_start, ImageBuffer::iterator &current_image_it) {
@@ -116,12 +89,12 @@ namespace x {
     /**
    * @brief bootstrapping features: Uses first two frames to initialize feature translation and optical flow.
    */
-    void bootstrapFeatureKLT(Patch &patch, const cv::Mat &last_image, const cv::Mat &current_image);
+    void bootstrapFeatureKLT(EkltPatch &patch, const cv::Mat &last_image, const cv::Mat &current_image);
 
     /**
      * @brief bootstrapping features: Uses first event frame to solve for the best optical flow, given 0 translation.
      */
-    void bootstrapFeatureEvents(Patch &patch, const cv::Mat &event_frame);
+    void bootstrapFeatureEvents(EkltPatch &patch, const cv::Mat &event_frame);
 
     /**
      * @brief add new features
@@ -131,7 +104,7 @@ namespace x {
     /**
      * @brief update a patch with the new event, return true if patch position has been updated
      */
-    bool updatePatch(Patch &patch, const Event &event);
+    bool updatePatch(EkltPatch &patch, const Event &event);
 
     /**
      * @brief reset patches that have been lost.
@@ -158,7 +131,7 @@ namespace x {
     /**
      * @brief checks if the optimization cost is above 1.6 (as described in the paper)
      */
-    inline bool shouldDiscard(Patch &patch) {
+    inline bool shouldDiscard(EkltPatch &patch) {
       bool out_of_fov = isPointOutOfView(patch.getCenter());
       bool exceeded_error = patch.tracking_quality_ < params_.eklt_tracking_quality;
 
@@ -172,25 +145,7 @@ namespace x {
     /**
      * @brief sets the number of events to process adaptively according to equation (15) in the paper
      */
-    void setBatchSize(Patch &patch, const cv::Mat &I_x, const cv::Mat &I_y, const double &d);
-
-    /**
-     * @brief Insert an event in the buffer while keeping the buffer sorted
-     * This uses insertion sort as the events already come almost always sorted
-     */
-    inline void insertEventInSortedBuffer(const Event &e) {
-      std::unique_lock<std::mutex> lock(events_mutex_);
-      events_.push_back(e);
-      // insertion sort to keep the buffer sorted
-      // in practice, the events come almost always sorted,
-      // so the number of iterations of this loop is almost always 0
-      auto j = (events_.size() - 1) - 1; // second to last element
-      while (j >= 0 && events_[j].ts > e.ts) {
-        events_[j + 1] = events_[j];
-        j--;
-      }
-      events_[j + 1] = e;
-    }
+    void setBatchSize(EkltPatch &patch, const cv::Mat &I_x, const cv::Mat &I_y, const double &d);
 
     Camera camera_;
     Params params_;
@@ -206,15 +161,7 @@ namespace x {
     ImageBuffer::iterator current_image_it_;
     double most_current_time_;
 
-    // buffers for images and events
-    EkltEventBuffer events_;
     ImageBuffer images_;
-
-    // ros
-//    ros::Subscriber event_sub_;
-//    image_transport::Subscriber image_sub_;
-//    image_transport::ImageTransport it_;
-//    ros::NodeHandle nh_;
 
     // patch parameters
     Patches patches_;
@@ -225,15 +172,11 @@ namespace x {
     Viewer *viewer_ptr_ = nullptr;
     Optimizer optimizer_;
 
-    // mutex
-    std::mutex events_mutex_;
-    std::mutex images_mutex_;
-
     MatchList getMatchListFromPatches();
 
     int viewer_counter_ = 0;
 
-    inline void discardPatch(Patch &patch) {
+    inline void discardPatch(EkltPatch &patch) {
       // if the patch has been lost record it in lost_indices_
       patch.lost_ = true;
       lost_indices_.push_back(&patch - &patches_[0]);

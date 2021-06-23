@@ -54,10 +54,9 @@ namespace x {
 
   typedef std::shared_ptr<EkltPerformanceLogger> EkltPerformanceLoggerPtr;
 
-  struct Patch; //forward decl
-  using Patches = std::vector<Patch>; //forward decl
+  struct EkltPatch; //forward decl
+  using Patches = std::vector<EkltPatch>; //forward decl
 
-  using EkltEventBuffer = std::deque<Event>;
   using ImageBuffer = std::map<double, TiledImage>;
 
   struct FeatureTrackData {
@@ -95,6 +94,3 @@ namespace x {
   using OptimizerData = std::map<double, OptimizerDatum>;
 
 }
-
-
-

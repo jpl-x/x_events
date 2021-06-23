@@ -7,7 +7,7 @@
 
 #include <x/vio/types.h>
 #include <x/eklt/types.h>
-#include <x/eklt/tracker.h>
+#include <x/eklt/eklt_tracker.h>
 #include <x/eklt/viewer.h>
 #include <x/eklt/eklt_vio_updater.h>
 #include <x/vio/state_manager.h>

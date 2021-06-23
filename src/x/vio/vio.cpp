@@ -19,8 +19,6 @@
 #include <x/vision/types.h>
 #include <easy/profiler.h>
 
-#include <x/eklt/tracker.h>
-
 #include <iostream>
 
 // if Boost was compiled with BOOST_NO_EXCEPTIONS defined, it expects a user

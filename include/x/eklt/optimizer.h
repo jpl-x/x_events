@@ -1,8 +1,8 @@
 #pragma once
 
-#include "error.h"
-#include "patch.h"
-#include "types.h"
+#include <x/eklt/error.h>
+#include <x/eklt/eklt_patch.h>
+#include <x/eklt/types.h>
 
 
 namespace x {
@@ -38,7 +38,7 @@ namespace x {
     /**
      * @brief perform optimization of cost function (7) in the original paper.
      */
-    void optimizeParameters(const cv::Mat &event_frame, Patch &patch, double t);
+    void optimizeParameters(const cv::Mat &event_frame, EkltPatch &patch, double t);
 
     Params params_;
     EkltPerformanceLoggerPtr perf_logger_;
