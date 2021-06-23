@@ -321,8 +321,8 @@ namespace x
       Matrix cov_;
 
       ////////////////////////// DEPRECATED STATES /////////////////////////////
-      // TODO: Remove these states and modify measurement jacobians after xEKF
-      // is implemented
+      // TODO: Since these are not EKF states any more, they should be stored
+      // somewhere, probably in StateManager.
 
       /**
        * Unit quaternion modeling the rotation changing the axes of {I} into

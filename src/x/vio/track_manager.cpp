@@ -79,9 +79,9 @@ std::vector<unsigned int> TrackManager::getLostSlamTrackIndexes() const {
 
 void TrackManager::manageTracks(MatchList& matches,
                                 const AttitudeList cam_rots,
-                                const int n_poses_max,
-                                const int n_slam_features_max,
-                                const int min_track_length,
+                                const size_t n_poses_max,
+                                const size_t n_slam_features_max,
+                                const size_t min_track_length,
                                 TiledImage& img) {
   // Append the new persistent tracks from last image to the persistent track
   // list and clear the list for new ones
@@ -591,7 +591,7 @@ void TrackManager::plotFeatures(TiledImage& img,
   {
     // Use track length to differentiate potential tracks, which are not long
     // enough to be processed as an MSCKF measurement if lost.
-    const size_t track_sz = opp_trks_[ii].size();
+    const int track_sz = opp_trks_[ii].size();
 
     if( track_sz >= min_track_length - 1)
     {

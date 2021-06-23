@@ -80,9 +80,9 @@ namespace x {
        */ 
       void manageTracks(MatchList& matches,
           const AttitudeList cam_rots,
-          const int n_poses_max,
-          const int n_slam_features_max,
-          const int min_track_length,
+          const size_t n_poses_max,
+          const size_t n_slam_features_max,
+          const size_t min_track_length,
           TiledImage& img);
 
       std::vector<int> featureTriangleAtPoint(const Feature& lrf_img_pt, TiledImage& img) const;
