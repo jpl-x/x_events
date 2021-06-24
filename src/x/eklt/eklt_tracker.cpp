@@ -17,15 +17,17 @@
 using namespace x;
 
 EkltTracker::EkltTracker(Camera camera, Viewer &viewer, Params params, EkltPerformanceLoggerPtr p_logger)
-  : camera_(std::move(camera)), params_(std::move(params)), perf_logger_(std::move(p_logger))
+  : params_(std::move(params)), perf_logger_(std::move(p_logger))
   , sensor_size_(0, 0), got_first_image_(false), most_current_time_(-1.0)
-  , viewer_ptr_(&viewer), optimizer_(params_, perf_logger_) {
+  , viewer_ptr_(&viewer), optimizer_(params_, perf_logger_)
+  , interpolator_(params, camera) {
 }
 
 void EkltTracker::setParams(const Params &params) {
   params_ = params;
   viewer_ptr_->setParams(params);
   optimizer_.setParams(params);
+  interpolator_.setParams(params);
 
   if (params_.eklt_ekf_update_strategy == EkltEkfUpdateStrategy::EVERY_N_EVENTS) {
     events_till_next_ekf_update_ = params_.eklt_ekf_update_every_n;
@@ -39,7 +41,7 @@ void EkltTracker::initPatches(Patches &patches, std::vector<int> &lost_indices, 
 
   // fill up patches to full capacity and set all of the filled patches to lost
   for (int i = patches.size(); i < corners; i++) {
-    patches.emplace_back(params_, &camera_);
+    patches.emplace_back(params_);
     lost_indices.push_back(i);
   }
 
@@ -122,7 +124,7 @@ bool EkltTracker::updatePatch(EkltPatch &patch, const Event &event) {
   }
 
   if (perf_logger_)
-    perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.id_, EkltTrackUpdateType::Update,
+    perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.getId(), EkltTrackUpdateType::Update,
                                          patch.getCurrentTime(), patch.getCenter().x, patch.getCenter().y, patch.flow_angle_);
 
   setBatchSize(patch, patch_gradients_[&patch - &patches_[0]].first, patch_gradients_[&patch - &patches_[0]].second,
@@ -245,10 +247,10 @@ void EkltTracker::extractPatches(Patches &patches, const int &num_patches, const
   << "Extracted " << features.size() << " new features on image at t=" << std::setprecision(15) << image_it->first
   << " s.";
   for (const auto & feature : features) {
-    patches.emplace_back(feature, image_it->first, params_, &camera_);
+    patches.emplace_back(feature, image_it->first, params_);
     EkltPatch &patch = patches[patches.size() - 1];
     if (perf_logger_)
-      perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.id_, EkltTrackUpdateType::Init,
+      perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.getId(), EkltTrackUpdateType::Init,
                                            patch.getCurrentTime(), patch.getCenter().x, patch.getCenter().y, patch.flow_angle_);
   }
 }
@@ -283,7 +285,7 @@ void EkltTracker::bootstrapFeatureKLT(EkltPatch &patch, const cv::Mat &last_imag
   } else {
     patch.initialized_ = true;
     if (perf_logger_)
-      perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.id_, EkltTrackUpdateType::Bootstrap,
+      perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.getId(), EkltTrackUpdateType::Bootstrap,
                                            patch.getCurrentTime(), patch.getCenter().x, patch.getCenter().y, patch.flow_angle_);
   }
 }
@@ -383,7 +385,7 @@ std::vector<MatchList> EkltTracker::processEvents(const EventArray::ConstPtr &ms
           if (did_some_patch_change) {
             events_till_next_ekf_update_ = params_.eklt_ekf_update_every_n;
             did_some_patch_change = false;
-            match_lists_for_ekf_updates.push_back(getMatchListFromPatches());
+            match_lists_for_ekf_updates.push_back(interpolator_.getMatchListFromPatches(getActivePatches()));
           } else {
             events_till_next_ekf_update_ = 1; // try on next event again
           }
@@ -393,7 +395,7 @@ std::vector<MatchList> EkltTracker::processEvents(const EventArray::ConstPtr &ms
         if (ev.ts - last_ekf_update_timestamp_ >= params_.eklt_ekf_update_every_n * 1e-3 && did_some_patch_change) {
           did_some_patch_change = false;
           last_ekf_update_timestamp_ = ev.ts;
-          match_lists_for_ekf_updates.push_back(getMatchListFromPatches());
+          match_lists_for_ekf_updates.push_back(interpolator_.getMatchListFromPatches(getActivePatches()));
         }
         break;
     }
@@ -403,7 +405,7 @@ std::vector<MatchList> EkltTracker::processEvents(const EventArray::ConstPtr &ms
   }
 
   if (did_some_patch_change && params_.eklt_ekf_update_strategy == EkltEkfUpdateStrategy::EVERY_ROS_EVENT_MESSAGE) {
-    match_lists_for_ekf_updates.push_back(getMatchListFromPatches());
+    match_lists_for_ekf_updates.push_back(interpolator_.getMatchListFromPatches(getActivePatches()));
   }
   return match_lists_for_ekf_updates;
 }
@@ -426,69 +428,6 @@ void EkltTracker::processImage(double timestamp, TiledImage &current_img, unsign
   }
 }
 
-MatchList EkltTracker::getMatchListFromPatches() {
-  MatchList matches;
-
-  EASY_FUNCTION();
-  double interpolation_time = std::numeric_limits<double>::lowest();
-  int N = 0;
-
-  for (auto& p : patches_) {
-    if (!p.lost_) {
-      switch (params_.eklt_ekf_update_timestamp) {
-        case EkltEkfUpdateTimestamp::PATCH_AVERAGE:
-          interpolation_time = (N * interpolation_time + p.getCurrentTime()) / (N+1);
-          ++N;
-          break;
-        case EkltEkfUpdateTimestamp::PATCH_MAXIMUM:
-          interpolation_time = std::max(interpolation_time, p.getCurrentTime());
-          break;
-      }
-    }
-  }
-  matches.clear();
-
-  for (auto& p : patches_) {
-    if (!p.lost_) {
-      auto match = p.consumeMatch(interpolation_time);
-      if (isPointOutOfView(cv::Point2d(match.current.getX(), match.current.getY()))) {
-        discardPatch(p);
-      } else {
-        matches.push_back(match);
-      }
-    }
-  }
-
-  // remove outliers if necessary
-
-  if (matches.empty() || !params_.eklt_enable_outlier_removal)
-    return matches;
-
-  std::vector<cv::Point2f> pts1, pts2;
-  pts1.reserve(matches.size());
-  pts2.reserve(matches.size());
-
-  for (const auto& m : matches) {
-    pts1.emplace_back(m.previous.getX(), m.previous.getY());
-    pts2.emplace_back(m.current.getX(), m.current.getY());
-  }
-
-  auto mask = x::detectOutliers(pts1, pts2, params_.outlier_method, params_.outlier_param1, params_.outlier_param2);
-
-  MatchList matches_refined;
-  matches_refined.reserve(matches.size()); // prepare for best case
-
-  auto m_it = matches.cbegin();
-
-  for (const auto& m : mask) {
-    if (m) {
-      matches_refined.push_back(*m_it);
-    }
-    ++m_it;
-  }
-
-  return matches_refined;
-}
 
 void EkltTracker::renderVisualization(TiledImage &tracker_debug_image_output) {
   viewer_ptr_->renderView();

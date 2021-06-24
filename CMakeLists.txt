@@ -147,6 +147,7 @@ set (SOURCE
   src/x/eklt/eklt_node.cpp
   src/x/eklt/optimizer.cpp
   src/x/eklt/eklt_tracker.cpp
+  src/x/eklt/async_feature_interpolator.cpp
   src/x/eklt/viewer.cpp
   src/x/eklt/eklt_vio_updater.cpp
   src/x/eklt/eklt_vio.cpp

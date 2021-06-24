@@ -33,8 +33,8 @@ struct EkltPatch : public AsyncPatch
    * @param half_size half size of the patch side length
    * @param t_init time stamp of the image where the corner was extracted
    */
-    EkltPatch(const cv::Point2d& center, double t_init, const x::Params& params, x::Camera* cam)
-      : AsyncPatch(params, cam)
+    EkltPatch(const cv::Point2d& center, double t_init, const x::Params& params)
+      : AsyncPatch()
       , init_center_(center)
       , flow_angle_(0)
       , event_counter_(0)
@@ -55,7 +55,7 @@ struct EkltPatch : public AsyncPatch
     }
 
     // TODO find alternative to ros::Time::now().toSec() -- now -1
-    explicit EkltPatch(const x::Params& params, x::Camera* cam) : EkltPatch(cv::Point2f(-1, -1), -1, params, cam)
+    explicit EkltPatch(const x::Params& params) : EkltPatch(cv::Point2f(-1, -1), -1, params)
     {
         // contstructor for initializing lost features
         lost_ = true;
@@ -186,8 +186,7 @@ struct EkltPatch : public AsyncPatch
         static std::default_random_engine re;
         color_ = cv::Scalar(unif(re), unif(re), unif(re));
 
-        static int id = 0;
-        id_ = id++;
+        assignNewId();
     }
 
     cv::Point2d init_center_;
@@ -204,7 +203,6 @@ struct EkltPatch : public AsyncPatch
     double tracking_quality_;
     cv::Scalar color_;
 
-    int id_ {-1};
     int batch_size_;
     int update_rate_;
     bool lost_;

@@ -11,6 +11,8 @@
 #include "eklt_patch.h"
 #include "optimizer.h"
 #include "viewer.h"
+#include "async_patch.h"
+#include "async_feature_interpolator.h"
 
 
 namespace x {
@@ -33,10 +35,17 @@ namespace x {
     void setPerfLogger(const EkltPerformanceLoggerPtr& perf_logger);
 
     void setCamera(const x::Camera& camera) {
-      camera_ = camera;
-      for (auto& patch : patches_) {
-        patch.setCamera(&camera_);
-      }
+      interpolator_.setCamera(camera);
+    }
+
+
+    std::vector<const AsyncPatch* > getActivePatches() {
+      std::vector<const AsyncPatch* > ret;
+      ret.reserve(patches_.size()); // prepare for best case
+      for (const auto& p : patches_)
+        if (!p.lost_)
+          ret.push_back(&p);
+      return ret;
     }
 
       /**
@@ -147,7 +156,6 @@ namespace x {
      */
     void setBatchSize(EkltPatch &patch, const cv::Mat &I_x, const cv::Mat &I_y, const double &d);
 
-    Camera camera_;
     Params params_;
     EkltPerformanceLoggerPtr perf_logger_;
     cv::Size sensor_size_;
@@ -171,8 +179,7 @@ namespace x {
     // delegation
     Viewer *viewer_ptr_ = nullptr;
     Optimizer optimizer_;
-
-    MatchList getMatchListFromPatches();
+    AsyncFeatureInterpolator interpolator_;
 
     int viewer_counter_ = 0;
 
@@ -182,7 +189,7 @@ namespace x {
       lost_indices_.push_back(&patch - &patches_[0]);
 
       if (perf_logger_)
-        perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.id_, EkltTrackUpdateType::Lost,
+        perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.getId(), EkltTrackUpdateType::Lost,
                                              patch.getCurrentTime(), patch.getCenter().x, patch.getCenter().y,
                                              patch.flow_angle_);
     }
