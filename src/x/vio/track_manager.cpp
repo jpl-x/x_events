@@ -87,12 +87,12 @@ std::vector<unsigned int> TrackManager::getLostSlamTrackIndexes() const {
   return lost_slam_idxs_;
 }
 
-void TrackManager::manageTracks(MatchList &matches,
-                                const AttitudeList &cam_rots,
-                                const int n_poses_max,
-                                const int n_slam_features_max,
-                                const int min_track_length,
-                                TiledImage &img) {
+void TrackManager::manageTracks(MatchList& matches,
+                                const AttitudeList cam_rots,
+                                const size_t n_poses_max,
+                                const size_t n_slam_features_max,
+                                const size_t min_track_length,
+                                TiledImage& img) {
   // Append the new persistent tracks from last image to the persistent track
   // list and clear the list for new ones
   slam_trks_.insert(slam_trks_.end(),
@@ -562,7 +562,7 @@ void TrackManager::plotFeatures(TiledImage &img,
   for (size_t ii = 0; ii < n_opp; ii++) {
     // Use track length to differentiate potential tracks, which are not long
     // enough to be processed as an MSCKF measurement if lost.
-    const size_t track_sz = opp_trks_[ii].size();
+    const int track_sz = opp_trks_[ii].size();
 
     if (track_sz >= min_track_length - 1) {
       count_opp++;

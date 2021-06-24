@@ -33,7 +33,7 @@ namespace x
     kIdxQ = 6,
     kIdxBw = 9,
     kIdxBa = 12,
-    kSizeCoreErr = 21
+    kSizeCoreErr = 15
   };
 
   /**
@@ -117,6 +117,13 @@ namespace x
 
       Vector3 getPositionExtrinsics() const;
 
+      /**
+       * Assembles and returns the 16 dynamic states.
+       *
+       * @return The core state vector.
+       */
+      Eigen::VectorXd getDynamicStates() const;
+
       Matrix getCovariance() const;
 
       /**
@@ -125,6 +132,13 @@ namespace x
        * @return The pose covariance matrix.
        */
       Matrix getPoseCovariance() const;
+
+      /**
+       * Assembles and returns 15x15 covariance matrix of the dynamic state errors.
+       *
+       * @return The dynamic state covariance matrix.
+       */
+      Matrix getDynamicCovariance() const;
 
       Matrix& getCovarianceRef();
 
@@ -310,8 +324,8 @@ namespace x
       Matrix cov_;
 
       ////////////////////////// DEPRECATED STATES /////////////////////////////
-      // TODO: Remove these states and modify measurement jacobians after xEKF
-      // is implemented
+      // TODO: Since these are not EKF states any more, they should be stored
+      // somewhere, probably in StateManager.
 
       /**
        * Unit quaternion modeling the rotation changing the axes of {I} into

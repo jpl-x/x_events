@@ -98,6 +98,11 @@ namespace x
     Quaternion q;
     Vector3 b_w;
     Vector3 b_a;
+    Vector3 sigma_dp;
+    Vector3 sigma_dv;
+    Vector3 sigma_dtheta;
+    Vector3 sigma_dbw;
+    Vector3 sigma_dba;
     double cam_fx;
     double cam_fy;
     double cam_cx;
