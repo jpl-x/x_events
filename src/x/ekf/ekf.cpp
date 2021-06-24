@@ -34,7 +34,7 @@ Updater& Ekf::getUpdaterRef() {
 }
 
 void Ekf::set(const Updater& updater,
-              Vector3& g,
+              const Vector3& g,
               const ImuNoise& imu_noise,
               const size_t state_buffer_sz,
               const State& default_state,
