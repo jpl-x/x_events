@@ -216,7 +216,6 @@ EKLTVIO::computeSLAMCartesianFeaturesForState(
 
 void EKLTVIO::initAtTime(double now) {
   ekf_.lock();
-  initialized_ = false;
   vio_updater_.track_manager_.clear();
   vio_updater_.state_manager_.clear();
 
@@ -227,39 +226,14 @@ void EKLTVIO::initAtTime(double now) {
 
   // Initial time cannot be 0, which may happen when using simulated Clock time
   // before the first message has been received.
-  const double timestamp =
+  const double timestamp  =
     now > 0.0 ? now : std::numeric_limits<double>::epsilon();
 
   //////////////////////////////// xEKF INIT ///////////////////////////////////
 
-  // Initial core covariance matrix
-  // TODO(jeff) read from params
-  const double sigma_dp_x = 0.0;
-  const double sigma_dp_y = 0.0;
-  const double sigma_dp_z = 0.0;
-  const double sigma_dv_x = 0.05;
-  const double sigma_dv_y = 0.05;
-  const double sigma_dv_z = 0.05;
-  const double sigma_dtheta_x = 3.0 * M_PI / 180.0;
-  const double sigma_dtheta_y = 3.0 * M_PI / 180.0;
-  const double sigma_dtheta_z = 3.0 * M_PI / 180.0;
-  const double sigma_dbw_x = 6.0 * M_PI / 180.0;
-  const double sigma_dbw_y = 6.0 * M_PI / 180.0;
-  const double sigma_dbw_z = 6.0 * M_PI / 180.0;
-  const double sigma_dba_x = 0.3;
-  const double sigma_dba_y = 0.3;
-  const double sigma_dba_z = 0.3;
-  const double sigma_dtheta_ic_x = 1.0 * M_PI / 180.0;
-  const double sigma_dtheta_ic_y = 1.0 * M_PI / 180.0;
-  const double sigma_dtheta_ic_z = 1.0 * M_PI / 180.0;
-  const double sigma_dp_ic_x = 0.01;
-  const double sigma_dp_ic_y = 0.01;
-  const double sigma_dp_ic_z = 0.01;
-
+  // Initial vision state estimates and uncertainties are all zero
   const size_t n_poses_state = params_.n_poses_max;
   const size_t n_features_state = params_.n_slam_features_max;
-
-  // Initial vision state estimates and uncertainties are all zero
   const Matrix p_array = Matrix::Zero(n_poses_state * 3, 1);
   const Matrix q_array = Matrix::Zero(n_poses_state * 4, 1);
   const Matrix f_array = Matrix::Zero(n_features_state * 3, 1);
@@ -269,16 +243,13 @@ void EKLTVIO::initAtTime(double now) {
 
   // Construct initial covariance matrix
   const size_t n_err = kSizeCoreErr + n_poses_state * 6 + n_features_state * 3;
-  std::cout << "Allocating sigma_deg of size " << n_err << std::endl;
   Eigen::VectorXd sigma_diag(n_err);
-  sigma_diag << sigma_dp_x, sigma_dp_y, sigma_dp_z,
-    sigma_dv_x, sigma_dv_y, sigma_dv_z,
-    sigma_dtheta_x, sigma_dtheta_y, sigma_dtheta_z,
-    sigma_dbw_x, sigma_dbw_y, sigma_dbw_z,
-    sigma_dba_x, sigma_dba_y, sigma_dba_z,
-    sigma_dtheta_ic_x, sigma_dtheta_ic_y, sigma_dtheta_ic_z,
-    sigma_dp_ic_x, sigma_dp_ic_y, sigma_dp_ic_z,
-    sigma_p_array, sigma_q_array, sigma_f_array;
+  sigma_diag << params_.sigma_dp,
+                params_.sigma_dv,
+                params_.sigma_dtheta * M_PI / 180.0,
+                params_.sigma_dbw * M_PI / 180.0,
+                params_.sigma_dba,
+                sigma_p_array, sigma_q_array, sigma_f_array;
 
   const Eigen::VectorXd cov_diag = sigma_diag.array() * sigma_diag.array();
   const Matrix cov = cov_diag.asDiagonal();
@@ -304,7 +275,7 @@ void EKLTVIO::initAtTime(double now) {
   // Try to initialize the filter with initial state input
   try {
     ekf_.initializeFromState(init_state);
-  } catch (std::runtime_error &e) {
+  } catch (std::runtime_error& e) {
     std::cerr << "bad input: " << e.what() << std::endl;
   } catch (init_bfr_mismatch) {
     std::cerr << "init_bfr_mismatch: the size of dynamic arrays in the "
@@ -312,8 +283,6 @@ void EKLTVIO::initAtTime(double now) {
                  "the buffered states." << std::endl;
   }
   ekf_.unlock();
-
-  initialized_ = true;
 }
 
 /** \brief Gets 3D coordinates of MSCKF inliers and outliers.

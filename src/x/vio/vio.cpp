@@ -209,21 +209,6 @@ State VIO::processMatchesMeasurement(double timestamp,
   return updated_state;
 }
 
-State VIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr)
-{
-#ifdef DEBUG
-  std::cout << "Events at timestamp " << events_ptr->events.front().ts
-            << " received in xVIO class." << std::endl;
-#endif
-
-//  Viewer v;
-//  EkltTracker t(v);
-//  t.processEvents(events_ptr);
-
-  // Return invalid state for now
-  return State();
-}
-
 /** Calls the state manager to compute the cartesian coordinates of the SLAM features.
  */
 std::vector<Eigen::Vector3d>
@@ -248,7 +233,7 @@ void VIO::initAtTime(double now) {
     now > 0.0 ? now : std::numeric_limits<double>::epsilon();
 
   //////////////////////////////// xEKF INIT ///////////////////////////////////
- 
+
   // Initial vision state estimates and uncertainties are all zero
   const size_t n_poses_state = params_.n_poses_max;
   const size_t n_features_state = params_.n_slam_features_max;
@@ -270,7 +255,7 @@ void VIO::initAtTime(double now) {
                 sigma_p_array, sigma_q_array, sigma_f_array;
 
   const Eigen::VectorXd cov_diag = sigma_diag.array() * sigma_diag.array();
-  const Matrix cov = cov_diag.asDiagonal(); 
+  const Matrix cov = cov_diag.asDiagonal();
 
   // Construct initial state
   const unsigned int dummy_seq = 0;
