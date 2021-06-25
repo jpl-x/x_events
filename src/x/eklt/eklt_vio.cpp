@@ -35,7 +35,7 @@ EKLTVIO::EKLTVIO(XVioPerformanceLoggerPtr xvio_perf_logger, EkltPerformanceLogge
 }
 
 bool EKLTVIO::isInitialized() const {
-  return initialized_;
+  return ekf_.getInitStatus() == InitStatus::kInitialized;
 }
 
 void EKLTVIO::setUp(const x::Params &params) {
