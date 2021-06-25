@@ -269,6 +269,7 @@ void EKLTVIO::initAtTime(double now) {
 
   // Construct initial covariance matrix
   const size_t n_err = kSizeCoreErr + n_poses_state * 6 + n_features_state * 3;
+  std::cout << "Allocating sigma_deg of size " << n_err << std::endl;
   Eigen::VectorXd sigma_diag(n_err);
   sigma_diag << sigma_dp_x, sigma_dp_y, sigma_dp_z,
     sigma_dv_x, sigma_dv_y, sigma_dv_z,

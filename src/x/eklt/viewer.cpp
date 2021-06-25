@@ -15,7 +15,7 @@ void Viewer::setViewData(Patches &patches, double t,
                          ImageBuffer::iterator image_it) {
   // copy all patches data to feature_track_data_. This is later used to generate a preview of the feature tracks.
   std::lock_guard<std::mutex> lock(data_mutex_);
-  for (int i = 0; i < patches.size(); i++) {
+  for (size_t i = 0; i < patches.size(); ++i) {
     if (feature_track_data_.patches.size() < patches.size()) {
       feature_track_data_.patches.push_back(patches[i]);
     } else {
@@ -31,48 +31,11 @@ void Viewer::setViewData(Patches &patches, double t,
 }
 
 void Viewer::initViewData(double t) {
-  // start viewer thread and publisher and allocate memory for feature_track_data_
-//    tracks_pub_ = it_.advertise("feature_tracks", 1);
-
-//  std::thread viewerThread(&Viewer::displayTracks, this);
-//  viewerThread.detach();
-
   int num_patches = params_.eklt_max_corners;
   feature_track_data_.patches.reserve(num_patches);
   feature_track_data_.t = t;
   feature_track_data_.t_init = t;
 }
-
-//void Viewer::publishImage(cv::Mat image, ros::Time stamp, std::string encoding, image_transport::Publisher pub)
-//{
-//    // helper for publishing images
-//    static cv_bridge::CvImage cv_image;
-//
-//    cv_image.encoding = encoding;
-//    cv_image.image = image.clone();
-//    cv_image.header.stamp = stamp;
-//
-//    pub.publish(cv_image.toImageMsg());
-//}
-
-//void Viewer::displayTracks() {
-////    ros::Rate r(30);
-//
-//  while (true) {
-//    //if the first image was not yet received do not do anything
-//    // otherwise prepare feature tracking preview
-////        r.sleep(); // TODO: find alternative (or move to x_vio_ros wrapper)
-//    if (!got_first_image_ || !params_.eklt_display_features) {
-//      continue;
-//    }
-//    {
-//      // generate image with features and processed rates
-//      std::lock_guard<std::mutex> lock(data_mutex_);
-//      drawOnImage(feature_track_data_, feature_track_view_, feature_track_data_.image);
-////        publishImage(feature_track_view_, ros::Time::now(), "bgr8", tracks_pub_);
-//    }
-//  }
-//}
 
 void Viewer::drawOnImage(FeatureTrackData &data, cv::Mat &view, const cv::Mat &image) {
   CHECK(image.size[0] > 0);
@@ -105,7 +68,7 @@ void Viewer::drawOnImage(FeatureTrackData &data, cv::Mat &view, const cv::Mat &i
 
 
   // draw patches
-  for (int i = 0; i < data.patches.size(); i++) {
+  for (size_t i = 0; i < data.patches.size(); ++i) {
     EkltPatch &patch = data.patches[i];
 
     if (patch.lost_)

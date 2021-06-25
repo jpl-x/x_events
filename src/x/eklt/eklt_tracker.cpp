@@ -54,7 +54,7 @@ void EkltTracker::initPatches(Patches &patches, std::vector<int> &lost_indices, 
   padBorders(I_x, I_x_padded, p);
   padBorders(I_y, I_y_padded, p);
 
-  for (int i = 0; i < patches.size(); i++) {
+  for (size_t i = 0; i < patches.size(); i++) {
     EkltPatch &patch = patches[i];
     if (patch.lost_) {
       patch_gradients_[i] = std::make_pair(cv::Mat::zeros(2 * p + 1, 2 * p + 1, CV_64F),
@@ -100,8 +100,8 @@ bool EkltTracker::updatePatch(EkltPatch &patch, const Event &event) {
   patch.insert(event);
 
   // start optimization if there are update_rate new events in the patch
-  int update_rate = std::min<int>(patch.update_rate_, patch.batch_size_);
-  if (patch.event_buffer_.size() < patch.batch_size_ || patch.event_counter_ < update_rate)
+//  int update_rate = std::min<int>(patch.update_rate_, patch.batch_size_); // EDIT from patch.event_counter_ < update_rate
+  if (patch.event_buffer_.size() < patch.batch_size_ || patch.event_counter_ < patch.batch_size_)
     return false;
 
   // compute event frame according to equation (2) in the paper
@@ -153,7 +153,7 @@ void EkltTracker::addFeatures(std::vector<int> &lost_indices, const ImageBuffer:
 }
 
 void EkltTracker::bootstrapAllPossiblePatches(Patches &patches, const ImageBuffer::iterator &image_it) {
-  for (int i = 0; i < patches.size(); i++) {
+  for (size_t i = 0; i < patches.size(); ++i) {
     EkltPatch &patch = patches[i];
 
     // if a patch is already bootstrapped, lost or has just been extracted
@@ -367,7 +367,7 @@ std::vector<MatchList> EkltTracker::processEvents(const EventArray::ConstPtr &ms
         bootstrapAllPossiblePatches(patches_, current_image_it_);
 
       // replenish features if there are too few
-      if (lost_indices_.size() > params_.eklt_max_corners - params_.eklt_min_corners)
+      if (lost_indices_.size() > static_cast<size_t>(params_.eklt_max_corners - params_.eklt_min_corners))
         addFeatures(lost_indices_, current_image_it_);
 
       // erase old image

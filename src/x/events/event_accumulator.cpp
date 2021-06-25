@@ -86,10 +86,12 @@ bool EventAccumulator::processEventBuffer(cv::Mat& event_img, double &image_time
   }
   else {
     // Calculate index of oldest event used for event accumulation.
-    int first_event_idx = std::max((int) event_buffer_.size() - params.n_events_max, 0);
+    // EDIT (FM): not used, getting rid of compiler warnings
+//    int first_event_idx = std::max((int) event_buffer_.size() - params.n_events_max, 0);
 
     // Calculate time interval in which all events lie.
-    double temporal_window_size = event_buffer_.back().ts - event_buffer_.at(first_event_idx).ts;
+    // EDIT (FM): not used, getting rid of compiler warnings
+//    double temporal_window_size = event_buffer_.back().ts - event_buffer_.at(first_event_idx).ts;
 
 #ifdef DEBUG
     if (event_buffer_.size() < params.n_events_max) {

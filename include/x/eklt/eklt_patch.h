@@ -48,8 +48,8 @@ struct EkltPatch : public AsyncPatch
 
         patch_size_ = params.eklt_patch_size;
         half_size_ = (params.eklt_patch_size - 1) / 2;
-        batch_size_ = params.eklt_batch_size;
-        update_rate_ = params.eklt_update_every_n_events;
+        batch_size_ = static_cast<size_t>(params.eklt_batch_size);
+//        update_rate_ = params.eklt_update_every_n_events;
 
         reset(init_center_, t_init);
     }
@@ -124,8 +124,8 @@ struct EkltPatch : public AsyncPatch
         // implements the function (2) in the paper
         event_frame = cv::Mat::zeros(2*half_size_+1, 2*half_size_+1, CV_64F);
 
-        int iterations =  batch_size_< event_buffer_.size() ? batch_size_-1 : event_buffer_.size()-1;
-        for (int i=0; i<iterations; i++)
+        size_t iterations =  batch_size_< event_buffer_.size() ? batch_size_-1 : event_buffer_.size()-1;
+        for (size_t i=0; i<iterations; ++i)
         {
             x::Event &e = event_buffer_[i];
 
@@ -196,15 +196,15 @@ struct EkltPatch : public AsyncPatch
     int patch_size_;
     int half_size_;
 
-    int event_counter_;
+    size_t event_counter_;
 
     double t_init_;
 
     double tracking_quality_;
     cv::Scalar color_;
 
-    int batch_size_;
-    int update_rate_;
+    size_t batch_size_;
+//    int update_rate_;
     bool lost_;
     bool initialized_;
 

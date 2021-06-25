@@ -94,7 +94,6 @@ void Optimizer::precomputeLogImageArray(const Patches &patches, const ImageBuffe
 void Optimizer::optimizeParameters(const cv::Mat &event_frame, EkltPatch &patch, double t) {
   auto start = profiler::now();
   EASY_FUNCTION();
-  double norm = 0;
 
   ceres::Problem problem(prob_options);
   ceres::Solver::Summary summary;

@@ -144,7 +144,6 @@ set (SOURCE
   src/x/vision/timing.cpp
   src/x/vision/tracker.cpp
   src/x/vision/triangulation.cpp
-  src/x/eklt/eklt_node.cpp
   src/x/eklt/optimizer.cpp
   src/x/eklt/eklt_tracker.cpp
   src/x/eklt/async_feature_interpolator.cpp

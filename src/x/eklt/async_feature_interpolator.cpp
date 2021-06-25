@@ -9,18 +9,18 @@
 
 x::Feature x::AsyncFeatureInterpolator::interpolatePatchToTime(const x::AsyncPatch *p, double t) {
 
+
+  auto& c_cur = p->getCenter();
+
   double x, y;
 
-  if (p->track_hist_.size() < 2) {
-    auto &center = p->getCenter();
-    x = center.x;
-    y = center.y;
-  } else {
+  x = c_cur.x;
+  y = c_cur.y;
 
+  if (p->track_hist_.size() >= 2) {
     auto& t_prev = p->track_hist_[p->track_hist_.size() - 2].first;
     auto& c_prev = p->track_hist_[p->track_hist_.size() - 2].second;
     auto& t_cur = p->getCurrentTime();
-    auto& c_cur = p->getCenter();
 
     switch (params_.eklt_ekf_feature_interpolation) {
       case EkltEkfFeatureInterpolation::NEAREST_NEIGHBOR: {
