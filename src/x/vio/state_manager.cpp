@@ -169,9 +169,9 @@ void StateManager::manage(State& state,
   state.setFeatureArray(new_features);
 }
 
-void StateManager::initMsckfSlamFeatures(State& state,
-                                    	   const x::MsckfSlamMatrices& init_mats,
-                                    	   const Matrix& correction,
+bool StateManager::initMsckfSlamFeatures(State& state,
+                                         const x::MsckfSlamMatrices& init_mats,
+                                         const Matrix& correction,
                                          const double sigma_img)
 {
 	// Error covariance matrix
@@ -191,8 +191,14 @@ void StateManager::initMsckfSlamFeatures(State& state,
   Matrix P_diag_new = H2_inv_H1 * P * H2_inv_H1.transpose()
       + var_img * H2_inv * H2_inv.transpose();
 
+  // quick fix: applies when H2 is close to singular; false is returned and these features are dropped
+  if (new_features.hasNaN()) {
+    return false;
+  }
+
 	// Add to state and covariance
-	addFeatureStates(state, new_features, P_diag_new, P_cross_new);  
+	addFeatureStates(state, new_features, P_diag_new, P_cross_new);
+  return true;
 }
 
 void StateManager::initStandardSlamFeatures(State& state,

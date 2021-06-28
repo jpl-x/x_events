@@ -67,7 +67,7 @@ namespace x {
        * @param[in] sigma_img Standard deviation of feature measurement
        *                      [in normalized coordinates].
       */
-      void initMsckfSlamFeatures(State& state,
+      bool initMsckfSlamFeatures(State& state,
                                  const x::MsckfSlamMatrices& init_mats,
                                  const Matrix& correction,
                                  const double sigma_img);
