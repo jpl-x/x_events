@@ -274,10 +274,18 @@ void EkltVioUpdater::postUpdate(State &state, const Matrix &correction) {
     // TODO(jeff) Do not initialize features which have failed the
     // Mahalanobis test. They need to be removed from the track
     // manager too.
-    state_manager_.initMsckfSlamFeatures(state,
-                                         msckf_slam_.getInitMats(),
-                                         correction,
-                                         sigma_img_);
+    auto success = state_manager_.initMsckfSlamFeatures(state, msckf_slam_.getInitMats(), correction, sigma_img_);
+    if (!success) {
+      std::vector<unsigned int> bad_indices;
+      bad_indices.reserve(track_manager_.getNewSlamMsckfTracks().size());
+
+      // remove all new slam msckf tracks, which have indices 0...n-1, because of the way they are inserted.
+      for (unsigned int i = 0; i < track_manager_.getNewSlamMsckfTracks().size(); ++i) {
+        bad_indices.push_back(i);
+      }
+
+      track_manager_.removeNewPersistentTracksAtIndexes(bad_indices);
+    }
   }
 
   // STANDARD SLAM feature initialization
