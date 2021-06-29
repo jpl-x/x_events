@@ -319,8 +319,9 @@ x::MatchList VIO::importMatches(const std::vector<double>& match_vector,
   // 6,7,8: 3D coordinate of feature
 
   // Number of matches in the input vector
-  assert(match_vector.size() % 9 == 0);
-  const unsigned int n_matches = match_vector.size() / 9;
+  const unsigned int feature_arr_blk_sz = 10; // Length of a feature block in match vector
+  assert(match_vector.size() %  feature_arr_blk_sz == 0);
+  const unsigned int n_matches = match_vector.size() / feature_arr_blk_sz;
 
   // Declare new lists
   x::MatchList matches(n_matches);
@@ -329,18 +330,18 @@ x::MatchList VIO::importMatches(const std::vector<double>& match_vector,
   for (unsigned int i = 0; i < n_matches; ++i)
   {
     // Undistortion
-    const double x_dist_prev = match_vector[9 * i + 1];
-    const double y_dist_prev = match_vector[9 * i + 2];
+    const double x_dist_prev = match_vector[feature_arr_blk_sz * i + 2];
+    const double y_dist_prev = match_vector[feature_arr_blk_sz * i + 3];
 
-    const double x_dist_curr = match_vector[9 * i + 4];
-    const double y_dist_curr = match_vector[9 * i + 5];
+    const double x_dist_curr = match_vector[feature_arr_blk_sz * i + 5];
+    const double y_dist_curr = match_vector[feature_arr_blk_sz * i + 6];
 
     // Features and match initializations
-    x::Feature previous_feature(match_vector[9 * i] + params_.time_offset, seq - 1, 0.0, 0.0, x_dist_prev,
+    x::Feature previous_feature(match_vector[feature_arr_blk_sz * i + 1] + params_.time_offset, seq - 1, 0.0, 0.0, x_dist_prev,
                                       y_dist_prev);
     camera_.undistort(previous_feature);
 
-    x::Feature current_feature(match_vector[9 * i + 3] + params_.time_offset, seq, 0.0, 0.0, x_dist_curr,
+    x::Feature current_feature(match_vector[feature_arr_blk_sz * i + 4] + params_.time_offset, seq, 0.0, 0.0, x_dist_curr,
                                      y_dist_curr);
     camera_.undistort(current_feature);
 
