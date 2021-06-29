@@ -200,6 +200,31 @@ namespace x
      */
     Vector3 g;
 
+    /**
+     * Max specific force norm threshold, after which accelerometer readings are detected as spikes. [m/s^2]
+     */
+    double a_m_max = 50.0;
+    
+    /**
+     * State buffer size (default: 250 states)
+     */
+    int state_buffer_size = 250;
+
+    /**
+     * Expected difference between successive IMU sequence IDs.
+     *
+     * Used to detects missing IMU messages. Default value 1.
+     */
+    int delta_seq_imu = 1;
+
+    /**
+     * Time margin, in seconds, around the buffer time range.
+     *
+     * This sets the tolerance for how far in the future/past the closest
+     * state request can be without returning an invalid state.
+     */
+    double state_buffer_time_margin = 0.02;
+
     double traj_timeout_gui;
     bool init_at_startup;
 

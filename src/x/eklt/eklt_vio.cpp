@@ -89,19 +89,15 @@ void EKLTVIO::setUp(const x::Params &params) {
                                 params_.iekf_iter);
 
   // EKF setup
-  const size_t state_buffer_sz = 250; // TODO(jeff) Read from params
   const State default_state = State(n_poses_state, n_features_state);
-  const double a_m_max = 50.0;
-  const unsigned int delta_seq_imu = 1;
-  const double time_margin_bfr = 0.02;
   ekf_.set(vio_updater_,
            g,
            imu_noise,
-           state_buffer_sz,
+           params_.state_buffer_size,
            default_state,
-           a_m_max,
-           delta_seq_imu,
-           time_margin_bfr);
+           params.a_m_max,
+           params_.delta_seq_imu,
+           params_.state_buffer_time_margin);
 }
 
 void EKLTVIO::setLastRangeMeasurement(x::RangeMeasurement range_measurement) {
