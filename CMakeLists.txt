@@ -13,8 +13,8 @@ set(UNIT_TESTS false) # Set true to enable unit tests
 #################################################################################
 
 cmake_minimum_required(VERSION 2.8.3)
+cmake_policy(SET CMP0048 NEW)  # avoids CMAKE_PROJECT_VERSION warning
 project(x)
-set(CMAKE_PROJECT_VERSION 1.9.0)  # event release could be 2.0
 
 set(CMAKE_BUILD_TYPE Release)
 
