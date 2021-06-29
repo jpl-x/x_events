@@ -80,7 +80,7 @@ void VIO::setUp(const x::Params& params) {
   state_manager_ = state_manager;
 
   // Gravity - TODO(jeff) Read from params
-  Vector3 g(0.0, 0.0, -9.81);
+  const Vector3 g = params_.g;
 
   // IMU noise
   x::ImuNoise imu_noise;
@@ -223,9 +223,9 @@ void VIO::initAtTime(double now) {
   vio_updater_.state_manager_.clear();
 
   // Initial IMU measurement (specific force, velocity)
-  Vector3 a_m, w_m;
-  a_m << 0.0, 0.0, 9.81;
-  w_m << 0.0, 0.0, 0.0;
+  // Assumption: gravity reaction along IMU +Z axis
+  const Vector3 a_m = - params_.g;
+  Vector3 w_m(0.0, 0.0, 0.0);
 
   // Initial time cannot be 0, which may happen when using simulated Clock time
   // before the first message has been received.

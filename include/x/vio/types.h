@@ -195,6 +195,11 @@ namespace x
      */
     int min_track_length;
 
+    /**
+     * Gravity vector in world frame [x,y,z]m in m/s^2
+     */
+    Vector3 g;
+
     double traj_timeout_gui;
     bool init_at_startup;
 
