@@ -237,7 +237,7 @@ State EVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr,
                                           params_.max_feat_per_tile);
 
   // Time correction
-  const double timestamp_corrected = image_time + params_.event_cam_time_offset;
+  const double timestamp_corrected = image_time + params_.time_offset;
 
   // Pass measurement data to updater
   MatchList empty_list; // TODO(jeff): get rid of image callback and process match

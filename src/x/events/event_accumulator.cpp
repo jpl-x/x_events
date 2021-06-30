@@ -99,10 +99,10 @@ bool EventAccumulator::processEventBuffer(cv::Mat& event_img, double &image_time
     }
 #endif
 
-    Eigen::Matrix4d T_C_B; // TODO(frockenb) use quaternion given in params_.q_ec
-    T_C_B << 1.0, 0.0, 0.0, params.p_ec[0],
-        0.0, 1.0, 0.0, params.p_ec[1],
-        0.0, 0.0, 1.0, params.p_ec[2],
+    Eigen::Matrix4d T_C_B; // TODO(frockenb) use quaternion given in params_.q_ic
+    T_C_B << 1.0, 0.0, 0.0, params.p_ic[0],
+        0.0, 1.0, 0.0, params.p_ic[1],
+        0.0, 0.0, 1.0, params.p_ic[2],
         0.0, 0.0, 0.0, 1.0;
 
     Eigen::Matrix4d T_IMU_1_0;
@@ -126,8 +126,8 @@ void EventAccumulator::drawEventFrame(cv::Mat& event_img, Eigen::Matrix4d T_1_0,
   //TODO(frockenb): Figure out what to do with T_1_0, t_start, t_end
 
   Eigen::Matrix4d K;
-  K << params.event_cam_fx, 0.0,                  params.event_cam_cx,  0.0,
-      0.0,                  params.event_cam_fy,  params.event_cam_cy,  0.0,
+  K << params.cam_fx, 0.0,                  params.cam_cx,  0.0,
+      0.0,                  params.cam_fy,  params.cam_cy,  0.0,
       0.0,                  0.0,                  1.0,                  0.0,
       0.0,                  0.0,                  0.0,                  1.0;
 
@@ -144,7 +144,7 @@ void EventAccumulator::drawEventFrame(cv::Mat& event_img, Eigen::Matrix4d T_1_0,
     }
 
     Eigen::Vector4d f;
-    f.head<2>() = camera.getKeypoint(e.x + e.y * params.event_img_width);
+    f.head<2>() = camera.getKeypoint(e.x + e.y * params.img_width);
     f[2] = 1.0;
     f[3] = params.rho_0; //TODO(frockenb): Add proper depth
 
@@ -156,7 +156,7 @@ void EventAccumulator::drawEventFrame(cv::Mat& event_img, Eigen::Matrix4d T_1_0,
     int x0 = std::floor(f[0]);
     int y0 = std::floor(f[1]);
 
-    if (x0 >= 0 && x0 < params.event_img_width-1 && y0 >= 0 && y0 < params.event_img_height-1)
+    if (x0 >= 0 && x0 < params.img_width-1 && y0 >= 0 && y0 < params.img_height-1)
     {
       const float fx = f[0] - x0,
           fy = f[1] - y0;

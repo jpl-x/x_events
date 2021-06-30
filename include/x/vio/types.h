@@ -175,7 +175,7 @@ namespace x
     /**
      * Event related parameters.
      */
-    double event_cam_fx;
+    /*double event_cam_fx;
     double event_cam_fy;
     double event_cam_cx;
     double event_cam_cy;
@@ -185,7 +185,7 @@ namespace x
     int event_img_width;
     Vector3 p_ec;
     Quaternion q_ec;
-    double event_cam_time_offset;
+    double event_cam_time_offset;*/
 
     int event_accumulation_method;
     double event_accumulation_period;
