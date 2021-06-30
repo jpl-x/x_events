@@ -58,10 +58,10 @@ void Optimizer::getLogGradients(const cv::Mat &img, cv::Mat &I_x, cv::Mat &I_y) 
     img.convertTo(img_float, CV_64F, 1.0);
 
     log_image = cv::Mat::ones(img.size(), CV_64F) * threshold;
-    cv::copyTo(img_float, log_image, mask);
+    img_float.copyTo(log_image, mask);
     cv::log(log_image, log_image);
     img.convertTo(lin_image, CV_64F, 1.0 / threshold * log(threshold));
-    cv::copyTo(lin_image, log_image, ~mask);
+    lin_image.copyTo(log_image, ~mask);
   } else {
     cv::Mat normalized_image;
     img.convertTo(normalized_image, CV_64F, 1.0 / 255.0);
