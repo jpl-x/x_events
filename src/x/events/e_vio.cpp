@@ -209,7 +209,7 @@ State EVIO::processMatchesMeasurement(double timestamp,
 }
 
 State EVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr,
-                                     TiledImage& match_img, TiledImage& event_img)
+                                     TiledImage& match_img, TiledImage& feature_img)
 {
 #ifdef DEBUG
   std::cout << events_ptr->events.size() << " events at timestamp "
@@ -223,6 +223,12 @@ State EVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr,
 
   double image_time;
   bool event_image_ready = false;
+
+  // Initialize plain image to plot features on
+  cv::Mat event_img(events_ptr->height,
+                    events_ptr->width,
+                    CV_32FC1,
+                    cv::Scalar(0.0));
 
   if(params_.event_accumulation_method == 0)
   {
@@ -266,7 +272,10 @@ State EVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr,
     updated_state.setTime(image_time);
 
   match_img = vio_updater_.getMatchImage();
-  event_img = vio_updater_.getFeatureImage();
+  feature_img = vio_updater_.getFeatureImage();
+
+//  cvtColor(event_img, event_img, cv::COLOR_GRAY2RGB);
+//  feature_img = event_img;
 
   return updated_state;
 
