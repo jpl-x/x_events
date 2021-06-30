@@ -16,11 +16,13 @@ class EventAccumulator
 public:
   EventAccumulator();
 
-  EventAccumulator(const size_t buffer_size, const int accumulation_method);
+  EventAccumulator(const size_t buffer_size, const int accumulation_method, const int imag_width, const int image_height);
 
   bool storeEventsInBuffer(const x::EventArray::ConstPtr &new_events, const Params& params);
 
   bool processEventBuffer(cv::Mat& event_img, double &image_time, const Params& params, const Camera& camera);
+
+  bool renderTimeSurface(cv::Mat& time_surface_img, double &image_time, const Params& params);
 
 private:
 
@@ -29,11 +31,14 @@ private:
   EventBuffer event_buffer_;
 
   enum AccumulationMethode {
-    EAM_CONSTANT_ACCUMULATION_TIME = 0,
-    EAM_CONSTANT_FRAME_SIZE = 1
+    EAM_TIME_SURFACE = 0,
+    EAM_CONSTANT_ACCUMULATION_TIME = 1,
+    EAM_CONSTANT_FRAME_SIZE = 2
   } event_accumulation_method_;
   int new_events_;
   double last_used_event_time_;
+
+  cv::Mat time_surface_;
 
   void drawEventFrame(cv::Mat& event_img, Eigen::Matrix4d T_1_0, double t_start, double t_end, const Params& params, const Camera& camera);
 

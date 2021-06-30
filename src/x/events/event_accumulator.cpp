@@ -10,7 +10,7 @@ using namespace x;
 EventAccumulator::EventAccumulator()
 {}
 
-EventAccumulator::EventAccumulator(const size_t buffer_size, const int accumulation_method)
+EventAccumulator::EventAccumulator(const size_t buffer_size, const int accumulation_method, const int image_width, const int image_height)
 {
   buffer_start_time_ = 0.0;
   buffer_end_time_ = 0.0;
@@ -19,6 +19,8 @@ EventAccumulator::EventAccumulator(const size_t buffer_size, const int accumulat
 
   event_accumulation_method_ = (AccumulationMethode) accumulation_method;
   event_buffer_.set_capacity(buffer_size);
+
+  time_surface_ = cv::Mat::zeros(image_height, image_width, CV_64FC1);
 }
 
 bool EventAccumulator::storeEventsInBuffer(const x::EventArray::ConstPtr &new_events, const Params& params)
@@ -27,6 +29,11 @@ bool EventAccumulator::storeEventsInBuffer(const x::EventArray::ConstPtr &new_ev
   {
     event_buffer_.push_back(e);
     new_events_++;
+
+    if(event_accumulation_method_ == EAM_TIME_SURFACE)
+    {
+      time_surface_.at<double>(e.y, e.x) = e.ts;
+    }
   }
   buffer_start_time_ = event_buffer_.front().ts;
   buffer_end_time_ = event_buffer_.back().ts;
@@ -173,4 +180,12 @@ void EventAccumulator::drawEventFrame(cv::Mat& event_img, Eigen::Matrix4d T_1_0,
     }
 
   }
+}
+
+bool EventAccumulator::renderTimeSurface(cv::Mat& time_surface_img, double &image_time, const Params& params)
+{
+  cv::exp((time_surface_-buffer_end_time_) / params.event_accumulation_period, time_surface_img);
+  //cv::normalize(time_surface_img, time_surface_img, 0, 1, cv::NORM_MINMAX, CV_32FC1);
+  image_time = buffer_end_time_;
+  return true;
 }

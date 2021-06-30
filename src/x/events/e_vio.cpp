@@ -115,7 +115,7 @@ void EVIO::setUp(const x::Params& params, const XVioPerformanceLoggerPtr& xvio_p
            delta_seq_imu,
            time_margin_bfr);
 
-  x::EventAccumulator event_accumulator(params_.n_events_max, params_.event_accumulation_method);
+  x::EventAccumulator event_accumulator(params_.n_events_max, params_.event_accumulation_method, params_.img_width, params_.img_height);
   event_accumulator_ = event_accumulator;
 }
 
@@ -224,7 +224,14 @@ State EVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr,
   if (!trigger_update) return State();
 
   double image_time;
-  bool event_image_ready = event_accumulator_.processEventBuffer(event_img, image_time, params_, camera_);
+  bool event_image_ready = false;
+
+  if(params_.event_accumulation_method == 0)
+  {
+    event_image_ready = event_accumulator_.renderTimeSurface(event_img, image_time, params_);
+  } else {
+    event_image_ready = event_accumulator_.processEventBuffer(event_img, image_time, params_, camera_);
+  }
 
   if (!event_image_ready) return State();
 
