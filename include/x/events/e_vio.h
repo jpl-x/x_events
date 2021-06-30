@@ -28,17 +28,16 @@
 
 #include <x/common/event_types.h>
 #include <x/events/event_accumulator.h>
-
-
+#include <x/vio/abstract_vio.h>
 
 
 namespace x {
-  class EVIO
+  class EVIO : public AbstractVio
   {
     public:
-      EVIO();
+      EVIO(XVioPerformanceLoggerPtr xvio_perf_logger = nullptr);
       bool isInitialized() const;
-      void setUp(const Params& params, const XVioPerformanceLoggerPtr& xvio_perf_logger = nullptr);
+      void setUp(const Params& params);
       void setLastRangeMeasurement(RangeMeasurement range_measurement);
       void setLastSunAngleMeasurement(SunAngleMeasurement angle_measurement);
       void initAtTime(double now);
@@ -56,7 +55,7 @@ namespace x {
       State processImu(const double timestamp,
           const unsigned int seq,
           const Vector3& w_m,
-          const Vector3& a_m);
+          const Vector3& a_m) override;
 
       /**
        * Creates an update measurement from image and pass it to EKF.
@@ -69,9 +68,9 @@ namespace x {
        * @return The updated state, or invalide if the update could not happen.
        */
       State processImageMeasurement(double timestamp,
-                                    const unsigned int seq,
+                                    unsigned int seq,
                                     TiledImage& match_img,
-                                    TiledImage& feature_img);
+                                    TiledImage& feature_img) override;
 
       /**
        * Creates an update measurement from visual matches and pass it to EKF.
@@ -84,7 +83,7 @@ namespace x {
        * @return The updated state, or invalid if the update could not happen.
        */
       State processMatchesMeasurement(double timestamp,
-                                      const unsigned int seq,
+                                      unsigned int seq,
                                       const std::vector<double>& match_vector,
                                       TiledImage& match_img,
                                       TiledImage& feature_img);
@@ -96,7 +95,9 @@ namespace x {
        * @return The updated state, or invalid if the update could not happen.
        */
       State processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr,
-                                     cv::Mat& event_img);
+                                     TiledImage& match_img, TiledImage& feature_img) override;
+
+      bool doesProcessEvents() const override { return true; }
 
       /**
        * Compute cartesian coordinates of SLAM features for input state.
@@ -151,6 +152,7 @@ namespace x {
       double GetTimestamp(size_t index);
 
       EventAccumulator event_accumulator_;
+      XVioPerformanceLoggerPtr xvio_perf_logger_;
   };
 } // namespace x
 

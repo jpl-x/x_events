@@ -41,15 +41,17 @@
 namespace x
 {
   using FeaturesCsv = CsvWriter<profiler::timestamp_t, size_t, size_t, size_t, size_t>;
+  using TracksCsv = CsvWriter<profiler::timestamp_t, u_int32_t, double, double, double, double, double, std::string>;
 
 
   struct XVioPerformanceLogger {
 
     explicit XVioPerformanceLogger(const fs::path & path)
-     : features_csv(path / "features.csv", {"ts", "num_slam_features", "num_msckf_features",
-                                            "num_opportunistic_features", "num_potential_features"}) {}
+     : features_csv(path / "features.csv", {"ts", "num_slam_features", "num_msckf_features", "num_opportunistic_features", "num_potential_features"})
+     , tracks_csv(path / "xvio_tracks.csv", {"lost_ts", "id", "t", "x", "y", "x_dist", "y_dist", "update_type"}) {}
 
     FeaturesCsv features_csv;
+    TracksCsv tracks_csv;
   };
 
   typedef std::shared_ptr<XVioPerformanceLogger> XVioPerformanceLoggerPtr;
@@ -59,6 +61,31 @@ namespace x
   enum class DistortionModel : char {
     FOV,
     RADIAL_TANGENTIAL,
+  };
+
+  enum class EkltEkfFeatureInterpolation : char {
+    NO_INTERPOLATION, // always take last
+    NEAREST_NEIGHBOR, // take one of both
+    LINEAR_NO_LIMIT,  // does linear inter- and extrapolation
+    LINEAR_RELATIVE_LIMIT, // does linear inter- and extrapolation till a ratio of interpolation_limit is not exceeded
+    LINEAR_ABSOLUTE_LIMIT, // does linear inter- and extrapolation until interpolation_limit in seconds is not exceeded
+  };
+
+  enum class EkltEkfUpdateStrategy : char {
+    EVERY_ROS_EVENT_MESSAGE,
+    EVERY_N_EVENTS,
+    // triggers EKF update when incoming event timestamps are more than n msec ahead from previous update
+    EVERY_N_MSEC_WITH_EVENTS,
+  };
+
+  enum class EkltEkfUpdateTimestamp : char {
+    PATCH_AVERAGE,
+    PATCH_MAXIMUM,
+  };
+
+  enum class EkltPatchTimestampAssignment : char {
+    LATEST_EVENT,
+    ACCUMULATED_EVENTS_CENTER,
   };
 
   /**
@@ -71,7 +98,11 @@ namespace x
     Quaternion q;
     Vector3 b_w;
     Vector3 b_a;
-    Vector3 g;
+    Vector3 sigma_dp;
+    Vector3 sigma_dv;
+    Vector3 sigma_dtheta;
+    Vector3 sigma_dbw;
+    Vector3 sigma_dba;
     double cam_fx;
     double cam_fy;
     double cam_cx;
@@ -155,11 +186,6 @@ namespace x
     int iekf_iter;
 
     /**
-     * Size of EKF state buffer.
-     */
-    int ekf_state_buffer_size;
-
-    /**
      * Minimum baseline to trigger MSCKF measurement (pixels).
      */
     double msckf_baseline;
@@ -168,6 +194,36 @@ namespace x
      * Minimum track length for a visual feature to be processed.
      */
     int min_track_length;
+
+    /**
+     * Gravity vector in world frame [x,y,z]m in m/s^2
+     */
+    Vector3 g;
+
+    /**
+     * Max specific force norm threshold, after which accelerometer readings are detected as spikes. [m/s^2]
+     */
+    double a_m_max = 50.0;
+
+    /**
+     * State buffer size (default: 250 states)
+     */
+    int state_buffer_size = 250;
+
+    /**
+     * Expected difference between successive IMU sequence IDs.
+     *
+     * Used to detects missing IMU messages. Default value 1.
+     */
+    int delta_seq_imu = 1;
+
+    /**
+     * Time margin, in seconds, around the buffer time range.
+     *
+     * This sets the tolerance for how far in the future/past the closest
+     * state request can be without returning an invalid state.
+     */
+    double state_buffer_time_margin = 0.02;
 
     double traj_timeout_gui;
     bool init_at_startup;
@@ -195,6 +251,56 @@ namespace x
     int n_events_noise_detection_min;
     double event_norm_factor;
     bool correct_event_motion;
+
+
+    /**
+     * EKLT frontend parameters
+     */
+    // feature detection
+    int eklt_max_corners = 100; // Maximum features allowed to be tracked
+    int eklt_min_corners = 60; // Minimum features allowed to be tracked
+    int eklt_min_distance = 30; // Minimum distance between detected features. Parameter passed to goodFeatureToTrack
+    int eklt_block_size = 30; // Block size to compute Harris score. passed to harrisCorner and goodFeaturesToTrack
+
+    // tracker
+    double eklt_k = 0; // Magic number for Harris score
+    double eklt_quality_level = 0; // Determines range of harris score allowed between the maximum and minimum. Passed to goodFeaturesToTrack
+    double eklt_log_eps = 1e-2; // Small constant to compute log image. To avoid numerical issues normally we compute log(img /255 + log_eps)
+    double eklt_first_image_t = -1; // If specified discards all images until this time.
+
+    // tracker
+    int eklt_lk_window_size = 15; // Parameter for KLT. Used for bootstrapping feature.
+    int eklt_num_pyramidal_layers = 2; // Parameter for KLT. Used for bootstrapping feature.
+    int eklt_batch_size = 200; // Determines the size of the event buffer for each patch. If a new event falls into a patch and the buffer is full, the older event in popped.
+    int eklt_patch_size = 25; // Determines size of patch around corner. All events that fall in this patch are placed into the features buffer.
+    int eklt_max_num_iterations = 10; //Maximum number of iterations allowed by the ceres solver to update optical flow direction and warp.
+
+    double eklt_displacement_px = 0; // Controls scaling parameter for batch size calculation: from formula optimal batchsize == 1/Cth * sum |nabla I * v/|v||. displacement_px corresponds to factor 1/Cth
+    double eklt_tracking_quality = 0; // minimum tracking quality allowed for a feature to be tracked. Can be a number between 0 (bad track) and 1 (good track). Is a rescaled number computed from ECC cost via tracking_quality == 1 - ecc_cost / 4. Note that ceres returns ecc_cost / 2.
+    std::string eklt_bootstrap = ""; // Method for bootstrapping optical flow direction. Options are 'klt', 'events'
+
+    // viewer
+    int eklt_update_every_n_events = 20; // Updates viewer data every n events as they are tracked
+    double eklt_scale = 4; // Rescaling factor for image. Allows to see subpixel tracking
+    double eklt_arrow_length = 5; // Length of optical flow arrow
+
+    bool eklt_display_features = true; // Whether or not to display feature tracks
+    bool eklt_display_feature_id = false; // Whether or not to display feature ids
+    bool eklt_display_feature_patches = false; // Whether or not to display feature patches
+
+    bool eklt_enable_outlier_removal = false; // Whether or not to remove outliers with the same method as xVIO
+
+    EkltEkfFeatureInterpolation eklt_ekf_feature_interpolation = EkltEkfFeatureInterpolation::LINEAR_NO_LIMIT;
+    // factor limiting the extrapolation amount. E.g. 0.0 means only interpolation is performed (no extrapolation), 1.0
+    // means that at most the time difference between the last two points is used for extrapolation.
+    // If < 0, no limit is applied.
+    double eklt_ekf_feature_extrapolation_limit = -1.0;
+    int eklt_ekf_update_every_n = -1;
+
+    EkltEkfUpdateStrategy eklt_ekf_update_strategy = EkltEkfUpdateStrategy::EVERY_ROS_EVENT_MESSAGE;
+    EkltEkfUpdateTimestamp eklt_ekf_update_timestamp = EkltEkfUpdateTimestamp::PATCH_AVERAGE;
+    EkltPatchTimestampAssignment eklt_patch_timestamp_assignment = EkltPatchTimestampAssignment::LATEST_EVENT;
+    bool eklt_use_linlog_scale = false; // whether to use piecewise lin-log scale instead of log(img+log_eps)
   };
 
   /**

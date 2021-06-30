@@ -81,7 +81,7 @@ void StateManager::manage(State& state,
     // Actual size of covariance matrix
     const size_t n = cov.rows();
     // Starting index of row/col of the feature to be deleted
-    const unsigned int idx0 = 21 + n_poses_max_ * 6 + idx * 3;
+    const unsigned int idx0 = kSizeCoreErr + n_poses_max_ * 6 + idx * 3;
     // Starting index of row/col after the feature to be deleted
     const unsigned int idx1 = idx0 + 3;
     // Number of active feature cols/rows after the one to be deleted
@@ -169,9 +169,9 @@ void StateManager::manage(State& state,
   state.setFeatureArray(new_features);
 }
 
-void StateManager::initMsckfSlamFeatures(State& state,
-                                    	   const x::MsckfSlamMatrices& init_mats,
-                                    	   const Matrix& correction,
+bool StateManager::initMsckfSlamFeatures(State& state,
+                                         const x::MsckfSlamMatrices& init_mats,
+                                         const Matrix& correction,
                                          const double sigma_img)
 {
 	// Error covariance matrix
@@ -191,8 +191,14 @@ void StateManager::initMsckfSlamFeatures(State& state,
   Matrix P_diag_new = H2_inv_H1 * P * H2_inv_H1.transpose()
       + var_img * H2_inv * H2_inv.transpose();
 
+  // quick fix: applies when H2 is close to singular; false is returned and these features are dropped
+  if (new_features.hasNaN()) {
+    return false;
+  }
+
 	// Add to state and covariance
-	addFeatureStates(state, new_features, P_diag_new, P_cross_new);  
+	addFeatureStates(state, new_features, P_diag_new, P_cross_new);
+  return true;
 }
 
 void StateManager::initStandardSlamFeatures(State& state,
@@ -237,7 +243,7 @@ void StateManager::addFeatureStates(State& state,
   // Augment covariance matrix
 	Matrix& P =state.getCovarianceRef();
   const size_t n = P.rows();
-  const size_t n_states = 21 + n_poses_max_ * 6 + n_features_ * 3;
+  const size_t n_states = kSizeCoreErr + n_poses_max_ * 6 + n_features_ * 3;
   P.block(n_states, 0, n_new_states, n) = cross;
   P.block(0, n_states, n, n_new_states) = cross.transpose();
   P.block(n_states, n_states, n_new_states, n_new_states) = cov;
@@ -305,60 +311,60 @@ void StateManager::augmentCovariance(const State& state,
 {
   Matrix jacobianCamPoseWrtStates;
   if (not stateHasBeenFilledBefore_) {
-    jacobianCamPoseWrtStates = Matrix::Zero(21 + n_poses_max_ * 6 + n_features_max_ * 3,
-                                            21 + n_poses_max_ * 6 + n_features_max_ * 3);
+    jacobianCamPoseWrtStates = Matrix::Zero(kSizeCoreErr + n_poses_max_ * 6 + n_features_max_ * 3,
+                                            kSizeCoreErr + n_poses_max_ * 6 + n_features_max_ * 3);
   } else {
-    jacobianCamPoseWrtStates = Matrix::Identity(21 + n_poses_max_ * 6 + n_features_max_ * 3,
-                                                21 + n_poses_max_ * 6 + n_features_max_ * 3);
+    jacobianCamPoseWrtStates = Matrix::Identity(kSizeCoreErr + n_poses_max_ * 6 + n_features_max_ * 3,
+                                                kSizeCoreErr + n_poses_max_ * 6 + n_features_max_ * 3);
   }
 
   // COVARIANCE AUGMENTATION
   // Unchanged: previous Core and cam position
-  jacobianCamPoseWrtStates.block(0, 0, 21 + (pos + 1) * 3, 21 + (pos + 1) * 3) =
-      Matrix::Identity(21 + (pos + 1) * 3, 21 + (pos + 1) * 3);
+  jacobianCamPoseWrtStates.block(0, 0, kSizeCoreErr + (pos + 1) * 3, kSizeCoreErr + (pos + 1) * 3) =
+      Matrix::Identity(kSizeCoreErr + (pos + 1) * 3, kSizeCoreErr + (pos + 1) * 3);
 
   // Unchanged: previous cam attitude
-  jacobianCamPoseWrtStates.block(21 + n_poses_max_ * 3,
-                21 + n_poses_max_ * 3,
+  jacobianCamPoseWrtStates.block(kSizeCoreErr + n_poses_max_ * 3,
+                kSizeCoreErr + n_poses_max_ * 3,
                 (pos + 1) * 3,
                 (pos + 1) * 3)
     = Matrix::Identity((pos + 1) * 3, (pos + 1) * 3);
 
   // Unchanged: features
-  jacobianCamPoseWrtStates.block(21 + n_poses_max_ * 6,
-                                 21 + n_poses_max_ * 6,
+  jacobianCamPoseWrtStates.block(kSizeCoreErr + n_poses_max_ * 6,
+                                 kSizeCoreErr + n_poses_max_ * 6,
                                  n_features_ * 3,
                                  n_features_ * 3)
     = Matrix::Identity(n_features_ * 3, n_features_ * 3);
 
   // cam_position::G_p_I
   // Derivative of camera position error wrt imu position error = I3x3
-  jacobianCamPoseWrtStates.block(21 + pos*3, 0, 3, 3) = Matrix::Identity(3, 3);
+  jacobianCamPoseWrtStates.block(kSizeCoreErr + pos*3, 0, 3, 3) = Matrix::Identity(3, 3);
 
   // Derivative of camera position error wrt imu orientation error = - C(qI2G) * [p_ic x]
   Vector3 pci = state.getPositionExtrinsics();
-  jacobianCamPoseWrtStates.block(21 + pos*3, 6, 3, 3)
+  jacobianCamPoseWrtStates.block(kSizeCoreErr + pos*3, 6, 3, 3)
     = - state.getOrientation().normalized().toRotationMatrix() 
     * pci.toCrossMatrix();
 
   // Derivative of camera attitude error wrt imu orientation error = C(qI2C)
-  jacobianCamPoseWrtStates.block(21 + n_poses_max_ * 3 + pos * 3, 6, 3, 3) =
+  jacobianCamPoseWrtStates.block(kSizeCoreErr + n_poses_max_ * 3 + pos * 3, 6, 3, 3) =
       state.getOrientationExtrinsics().conjugate().normalized().toRotationMatrix();
 
   Matrix P_current = covariance;
 
   // Delete rows associated with position
-  P_current.block(21 + pos * 3, 0, 3, P_current.cols()) =
+  P_current.block(kSizeCoreErr + pos * 3, 0, 3, P_current.cols()) =
       Matrix::Zero(3, P_current.cols());
   // Delete rows associated with attitude
-  P_current.block(21 + n_poses_max_ * 3 + pos * 3, 0, 3, P_current.cols()) =
+  P_current.block(kSizeCoreErr + n_poses_max_ * 3 + pos * 3, 0, 3, P_current.cols()) =
       Matrix::Zero(3, P_current.cols());
 
   // Delete cols associated with position
-  P_current.block(0, 21 + pos * 3, P_current.rows(), 3) =
+  P_current.block(0, kSizeCoreErr + pos * 3, P_current.rows(), 3) =
       Matrix::Zero(P_current.cols(), 3);
   // Delete cols associated with attitude
-  P_current.block(0, 21 + n_poses_max_ * 3 + pos * 3, P_current.rows(), 3) =
+  P_current.block(0, kSizeCoreErr + n_poses_max_ * 3 + pos * 3, P_current.rows(), 3) =
       Matrix::Zero(P_current.cols(), 3);
 
   // If the next pose will be out of bounds
@@ -399,7 +405,7 @@ void StateManager::reparametrizeFeatures(Eigen::VectorXd const& atts_old,
   }
 
   // Initialize covariance reparametrization matrix
-  const size_t n = 21 + n_poses_max_ * 6 + n_features_max_ * 3;
+  const size_t n = kSizeCoreErr + n_poses_max_ * 6 + n_features_max_ * 3;
   Matrix J(Matrix::Identity(n,n));
 
   // For each persistent feature whose anchor has to be changed
@@ -544,11 +550,11 @@ void StateManager::slideWindow(Eigen::VectorXd& atts,
   const size_t n = covariance.rows();
 
   Matrix left_mult = Matrix::Zero(n, n);
-  left_mult.block(0, 0, 21, 21) = Matrix::Identity(21, 21);
+  left_mult.block(0, 0, kSizeCoreErr, kSizeCoreErr) = Matrix::Identity(kSizeCoreErr, kSizeCoreErr);
 
   if (n_features_max_) {
-    left_mult.block(21 + n_poses_max_ * 6,
-                    21 + n_poses_max_ * 6,
+    left_mult.block(kSizeCoreErr + n_poses_max_ * 6,
+                    kSizeCoreErr + n_poses_max_ * 6,
                     n_features_max_ * 3,
                     n_features_max_ * 3)
       = Matrix::Identity(n_features_max_ * 3, n_features_max_ * 3);
@@ -556,20 +562,20 @@ void StateManager::slideWindow(Eigen::VectorXd& atts,
 
   Matrix right_mult = left_mult;
 
-  left_mult.block(21, 24, (n_poses_max_ - 1) * 3, (n_poses_max_ - 1) * 3)
+  left_mult.block(kSizeCoreErr, kSizeCoreErr+3, (n_poses_max_ - 1) * 3, (n_poses_max_ - 1) * 3)
     = Matrix::Identity((n_poses_max_ - 1) * 3, (n_poses_max_ - 1) * 3);
 
-  left_mult.block(21 + n_poses_max_ * 3,
-                  24 + n_poses_max_ * 3,
+  left_mult.block(kSizeCoreErr + n_poses_max_ * 3,
+                  kSizeCoreErr+3 + n_poses_max_ * 3,
                   (n_poses_max_ - 1) * 3,
                   (n_poses_max_ - 1) * 3)
     = Matrix::Identity((n_poses_max_ - 1) * 3, (n_poses_max_ - 1) * 3);
 
-  right_mult.block(24, 21, (n_poses_max_ - 1) * 3, (n_poses_max_ - 1) * 3)
+  right_mult.block(kSizeCoreErr+3, kSizeCoreErr, (n_poses_max_ - 1) * 3, (n_poses_max_ - 1) * 3)
     = Matrix::Identity((n_poses_max_ - 1) * 3, (n_poses_max_ - 1) * 3);
 
-  right_mult.block(24 + n_poses_max_ * 3,
-                   21 + n_poses_max_ * 3,
+  right_mult.block(kSizeCoreErr+3 + n_poses_max_ * 3,
+                   kSizeCoreErr + n_poses_max_ * 3,
                    (n_poses_max_ - 1) * 3,
                    (n_poses_max_ - 1) * 3)
     = Matrix::Identity((n_poses_max_ - 1) * 3, (n_poses_max_ - 1) * 3);

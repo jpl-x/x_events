@@ -102,6 +102,19 @@ Vector3 State::getPositionExtrinsics() const {
   return p_ic_;
 }
 
+Eigen::VectorXd State::getDynamicStates() const {
+  Eigen::VectorXd dyn_states(kSizeCoreErr+1);
+
+  // Fill in the states
+  dyn_states.segment(0,3) = p_;
+  dyn_states.segment(3,3) = v_;
+  dyn_states.segment(6,4) = q_.coeffs();
+  dyn_states.segment(10,3) = b_w_;
+  dyn_states.segment(13,3) = b_a_;
+
+  return dyn_states;
+}
+
 Matrix State::getCovariance() const {
   return cov_;
 }
@@ -116,6 +129,10 @@ Matrix State::getPoseCovariance() const {
   pose_cov.bottomLeftCorner(3,3)  = cov_.block<3,3>(kIdxQ,kIdxP);
 
   return pose_cov;
+}
+
+Matrix State::getDynamicCovariance() const {
+  return cov_.topLeftCorner(kSizeCoreErr,kSizeCoreErr);
 }
 
 Matrix& State::getCovarianceRef() {
@@ -292,10 +309,10 @@ Quaternion State::errorQuatFromSmallAngles(const Vector3& delta_theta) const {
   }
 }
 
-Vector3 State::getAccBias() const {
-  return b_a_;
+Vector3 State::getGyroscopeBias() const {
+  return b_w_;
 }
 
-Vector3 State::getGyroBias() const {
-  return b_w_;
+Vector3 State::getAccelerometerBias() const {
+  return b_a_;
 }

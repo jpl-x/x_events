@@ -29,6 +29,16 @@ TrackManager::TrackManager(const Camera &camera, const double min_baseline_n, XV
   : p_perf_logger_(std::move(xvio_perf_logger))
   , camera_(camera), min_baseline_n_(min_baseline_n) {}
 
+TrackManager::~TrackManager() {
+  // dump final tracks if necessary
+  if (p_perf_logger_) {
+    for (const auto& t : slam_trks_) {
+      dumpTrackToPerfLogger(t, "SLAM");
+    }
+  }
+}
+
+
 void TrackManager::setCamera(Camera camera) {
   camera_ = camera;
 }
@@ -77,12 +87,12 @@ std::vector<unsigned int> TrackManager::getLostSlamTrackIndexes() const {
   return lost_slam_idxs_;
 }
 
-void TrackManager::manageTracks(MatchList &matches,
-                                const AttitudeList &cam_rots,
-                                const int n_poses_max,
-                                const int n_slam_features_max,
-                                const int min_track_length,
-                                TiledImage &img) {
+void TrackManager::manageTracks(MatchList& matches,
+                                const AttitudeList cam_rots,
+                                const size_t n_poses_max,
+                                const size_t n_slam_features_max,
+                                const size_t min_track_length,
+                                TiledImage& img) {
   // Append the new persistent tracks from last image to the persistent track
   // list and clear the list for new ones
   slam_trks_.insert(slam_trks_.end(),
@@ -144,6 +154,8 @@ void TrackManager::manageTracks(MatchList &matches,
       // Add its index to lost tracks so it is deleted from the filter state and
       // covariance matrix
       lost_slam_idxs_.push_back(it + lost_per_count);
+
+      dumpTrackToPerfLogger(slam_trks_[it], "SLAM");
 
       // Erase the persistence feature track
       slam_trks_.erase(slam_trks_.begin() + it);
@@ -269,8 +281,10 @@ void TrackManager::manageTracks(MatchList &matches,
           if (opp_trks_[it].size() > n_poses_max - 1) {
             // Normalize track (and crop it if it longer than the attitude list)
             Track normalized_track = camera_.normalize(opp_trks_[it], cam_rots.size());
-            if (checkBaseline(normalized_track, cam_rots))
+            if (checkBaseline(normalized_track, cam_rots)) {
               msckf_trks_n_.push_back(normalized_track);
+              dumpTrackToPerfLogger(opp_trks_[it], "MSCKF");
+            }
 
             opp_trks_.erase(opp_trks_.begin() + it);
           } else
@@ -548,7 +562,7 @@ void TrackManager::plotFeatures(TiledImage &img,
   for (size_t ii = 0; ii < n_opp; ii++) {
     // Use track length to differentiate potential tracks, which are not long
     // enough to be processed as an MSCKF measurement if lost.
-    const size_t track_sz = opp_trks_[ii].size();
+    const int track_sz = opp_trks_[ii].size();
 
     if (track_sz >= min_track_length - 1) {
       count_opp++;
@@ -585,4 +599,16 @@ void TrackManager::plotFeatures(TiledImage &img,
   offset += textSize.width;
   cv::putText(img, potStr, cv::Point((int) 10 + offset, (int) camera_.getHeight() - 10), cv::FONT_HERSHEY_PLAIN,
               scale, blue, 1.5, 8, false);
+}
+
+void TrackManager::dumpTrackToPerfLogger(const Track &track, const std::string &update_info) {
+  // if we ain't got a file, there is nothing to do
+  if (!p_perf_logger_)
+    return;
+
+  auto current_id = track_dump_id_++;
+  for (const auto& f : track) {
+    p_perf_logger_->tracks_csv.addRow(profiler::now(), current_id, f.getTimestamp(), f.getX(), f.getY(), f.getXDist(), f.getYDist(), update_info);
+  }
+
 }

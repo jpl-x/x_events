@@ -1,8 +1,8 @@
 #pragma once
 
-#include "error.h"
-#include "patch.h"
-#include "types.h"
+#include <x/eklt/error.h>
+#include <x/eklt/eklt_patch.h>
+#include <x/eklt/types.h>
 
 
 namespace x {
@@ -11,14 +11,14 @@ namespace x {
    * @brief The Optimizer performs optimization to find the best warp and optical flow for each patch.
    */
   struct Optimizer {
-    explicit Optimizer(EkltParams params, EkltPerformanceLoggerPtr perf_logger = nullptr);
+    explicit Optimizer(Params params, EkltPerformanceLoggerPtr perf_logger = nullptr);
 
     ~Optimizer();
 
     /**
      * @brief updates the EKLT parameters
      */
-    void setParams(const EkltParams &params);
+    void setParams(const Params &params);
 
     void setPerfLogger(const EkltPerformanceLoggerPtr& perf_logger);
 
@@ -38,19 +38,17 @@ namespace x {
     /**
      * @brief perform optimization of cost function (7) in the original paper.
      */
-    void optimizeParameters(const cv::Mat &event_frame, Patch &patch, double t);
+    void optimizeParameters(const cv::Mat &event_frame, EkltPatch &patch, double t);
 
-    EkltParams params_;
+    Params params_;
     EkltPerformanceLoggerPtr perf_logger_;
 
     ceres::Problem::Options prob_options;
     ceres::Solver::Options solver_options;
-    ceres::LossFunction *loss_function;
 
     OptimizerData optimizer_data_;
 
     int patch_size_;
-    ceres::CostFunction *cost_function_;
   };
 
 }

@@ -3,11 +3,11 @@
 
 using namespace x;
 
-Viewer::Viewer(EkltParams params)
+Viewer::Viewer(Params params)
   : params_(std::move(params)), got_first_image_(false) {
 }
 
-void Viewer::setParams(const EkltParams &params) {
+void Viewer::setParams(const Params &params) {
   params_ = params;
 }
 
@@ -15,7 +15,7 @@ void Viewer::setViewData(Patches &patches, double t,
                          ImageBuffer::iterator image_it) {
   // copy all patches data to feature_track_data_. This is later used to generate a preview of the feature tracks.
   std::lock_guard<std::mutex> lock(data_mutex_);
-  for (int i = 0; i < patches.size(); i++) {
+  for (size_t i = 0; i < patches.size(); ++i) {
     if (feature_track_data_.patches.size() < patches.size()) {
       feature_track_data_.patches.push_back(patches[i]);
     } else {
@@ -31,54 +31,17 @@ void Viewer::setViewData(Patches &patches, double t,
 }
 
 void Viewer::initViewData(double t) {
-  // start viewer thread and publisher and allocate memory for feature_track_data_
-//    tracks_pub_ = it_.advertise("feature_tracks", 1);
-
-//  std::thread viewerThread(&Viewer::displayTracks, this);
-//  viewerThread.detach();
-
-  int num_patches = params_.max_corners;
+  int num_patches = params_.eklt_max_corners;
   feature_track_data_.patches.reserve(num_patches);
   feature_track_data_.t = t;
   feature_track_data_.t_init = t;
 }
 
-//void Viewer::publishImage(cv::Mat image, ros::Time stamp, std::string encoding, image_transport::Publisher pub)
-//{
-//    // helper for publishing images
-//    static cv_bridge::CvImage cv_image;
-//
-//    cv_image.encoding = encoding;
-//    cv_image.image = image.clone();
-//    cv_image.header.stamp = stamp;
-//
-//    pub.publish(cv_image.toImageMsg());
-//}
-
-//void Viewer::displayTracks() {
-////    ros::Rate r(30);
-//
-//  while (true) {
-//    //if the first image was not yet received do not do anything
-//    // otherwise prepare feature tracking preview
-////        r.sleep(); // TODO: find alternative (or move to x_vio_ros wrapper)
-//    if (!got_first_image_ || !params_.display_features) {
-//      continue;
-//    }
-//    {
-//      // generate image with features and processed rates
-//      std::lock_guard<std::mutex> lock(data_mutex_);
-//      drawOnImage(feature_track_data_, feature_track_view_, feature_track_data_.image);
-////        publishImage(feature_track_view_, ros::Time::now(), "bgr8", tracks_pub_);
-//    }
-//  }
-//}
-
 void Viewer::drawOnImage(FeatureTrackData &data, cv::Mat &view, const cv::Mat &image) {
   CHECK(image.size[0] > 0);
-  const double &scale = params_.scale;
-  const double &arrow_length = params_.arrow_length;
-  const int &patch_size = params_.patch_size;
+  const double &scale = params_.eklt_scale;
+  const double &arrow_length = params_.eklt_arrow_length;
+  const int &patch_size = params_.eklt_patch_size;
 
   view.setTo(0);
 
@@ -105,21 +68,21 @@ void Viewer::drawOnImage(FeatureTrackData &data, cv::Mat &view, const cv::Mat &i
 
 
   // draw patches
-  for (int i = 0; i < data.patches.size(); i++) {
-    Patch &patch = data.patches[i];
+  for (size_t i = 0; i < data.patches.size(); ++i) {
+    EkltPatch &patch = data.patches[i];
 
     if (patch.lost_)
       continue;
 
     // draw patch center and lk feature with line between them
-    cv::drawMarker(view, scale * patch.center_, patch.color_, cv::MARKER_CROSS, 10, 1);
+    cv::drawMarker(view, scale * patch.getCenter(), patch.color_, cv::MARKER_CROSS, 10, 1);
 
     // draw arrow
     cv::Point2d flow_arrow_tip =
       patch.init_center_ + arrow_length * cv::Point2d(std::cos(patch.flow_angle_), std::sin(patch.flow_angle_));
     cv::Point2d warped_flow_arrow_tip;
     patch.warpPixel(flow_arrow_tip, warped_flow_arrow_tip);
-    cv::arrowedLine(view, scale * patch.center_, scale * warped_flow_arrow_tip, cv::Scalar(255, 255, 0), 1, 8, 0,
+    cv::arrowedLine(view, scale * patch.getCenter(), scale * warped_flow_arrow_tip, cv::Scalar(255, 255, 0), 1, 8, 0,
                     0.1);
 
     int half_patch_size = (patch_size - 1) / 2;
@@ -142,14 +105,14 @@ void Viewer::drawOnImage(FeatureTrackData &data, cv::Mat &view, const cv::Mat &i
     std::vector<cv::Point> corners = {scale * top_left_warped, scale * top_right_warped, scale * bottom_right_warped,
                                       scale * bottom_left_warped};
 
-    if (patch.initialized_ && params_.display_feature_patches) {
+    if (patch.initialized_ && params_.eklt_display_feature_patches) {
       cv::polylines(view, corners, true, patch.color_, 2);
-      cv::line(view, scale * patch.center_, scale * top_middle_warped, patch.color_, 2);
+      cv::line(view, scale * patch.getCenter(), scale * top_middle_warped, patch.color_, 2);
     }
 
     // draw feature ids
-    cv::Point text_pos = cv::Point(patch.center_.x - half_patch_size + 2, patch.center_.y - half_patch_size + 8);
-    if (params_.display_feature_id) {
+    cv::Point text_pos = cv::Point(patch.getCenter().x - half_patch_size + 2, patch.getCenter().y - half_patch_size + 8);
+    if (params_.eklt_display_feature_id) {
 #if CV_MAJOR_VERSION == 4
       cv::putText(view, std::to_string(i), scale * text_pos, cv::FONT_HERSHEY_COMPLEX_SMALL,
                   scale * 0.4, cv::Scalar(255, 0, 0), 2, cv::LINE_AA);
@@ -164,7 +127,7 @@ void Viewer::drawOnImage(FeatureTrackData &data, cv::Mat &view, const cv::Mat &i
 }
 
 void Viewer::renderView() {
-  if (!got_first_image_ || !params_.display_features)
+  if (!got_first_image_ || !params_.eklt_display_features)
     return;
   drawOnImage(feature_track_data_, feature_track_view_, feature_track_data_.image);
 }

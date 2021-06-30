@@ -23,6 +23,7 @@
 // if Boost was compiled with BOOST_NO_EXCEPTIONS defined, it expects a user
 // defined trow_exception function, so define a dummy here, if this is the case
 #include <exception>
+#include <utility>
 
 using namespace x;
 
@@ -34,8 +35,9 @@ void throw_exception(std::exception const & e) {}; // user defined
 }
 
 
-EVIO::EVIO()
-  : ekf_ { Ekf(vio_updater_) }
+EVIO::EVIO(XVioPerformanceLoggerPtr  xvio_perf_logger)
+  : ekf_(vio_updater_)
+  , xvio_perf_logger_(std::move(xvio_perf_logger))
 {
   // Initialize with invalid last range measurement
   // todo: Replace -1 with -min_delay
@@ -54,7 +56,7 @@ bool EVIO::isInitialized() const {
   return ekf_.getInitStatus() == InitStatus::kInitialized;
 }
 
-void EVIO::setUp(const x::Params& params, const XVioPerformanceLoggerPtr& xvio_perf_logger) {
+void EVIO::setUp(const x::Params& params) {
   const x::Camera cam(params.cam_fx, params.cam_fy, params.cam_cx, params.cam_cy, params.cam_distortion_model,
                       params.cam_distortion_parameters, params.img_width, params.img_height);
   const x::Tracker tracker(cam, params.fast_detection_delta, params.non_max_supp, params.block_half_length,
@@ -65,7 +67,7 @@ void EVIO::setUp(const x::Params& params, const XVioPerformanceLoggerPtr& xvio_p
   msckf_baseline_n_ = params.msckf_baseline / (params.img_width * params.cam_fx);
 
   // Set up tracker and track manager
-  const TrackManager track_manager(cam, msckf_baseline_n_, xvio_perf_logger);
+  const TrackManager track_manager(cam, msckf_baseline_n_, xvio_perf_logger_);
   params_ = params;
   camera_ = cam;
   tracker_ = tracker;
@@ -101,19 +103,15 @@ void EVIO::setUp(const x::Params& params, const XVioPerformanceLoggerPtr& xvio_p
                             params_.iekf_iter);
 
   // EKF setup
-  const size_t state_buffer_sz = params_.ekf_state_buffer_size;
   const State default_state = State(n_poses_state, n_features_state);
-  const double a_m_max = 50.0;
-  const unsigned int delta_seq_imu = 1;
-  const double time_margin_bfr = 0.02;
   ekf_.set(vio_updater_,
            g,
            imu_noise,
-           state_buffer_sz,
+           params_.state_buffer_size,
            default_state,
-           a_m_max,
-           delta_seq_imu,
-           time_margin_bfr);
+           params.a_m_max,
+           params_.delta_seq_imu,
+           params_.state_buffer_time_margin);
 
   x::EventAccumulator event_accumulator(params_.n_events_max, params_.event_accumulation_method, params_.img_width, params_.img_height);
   event_accumulator_ = event_accumulator;
@@ -211,7 +209,7 @@ State EVIO::processMatchesMeasurement(double timestamp,
 }
 
 State EVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr,
-                                    cv::Mat& event_img)
+                                     TiledImage& match_img, TiledImage& event_img)
 {
 #ifdef DEBUG
   std::cout << events_ptr->events.size() << " events at timestamp "
@@ -267,6 +265,7 @@ State EVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr,
   if(updated_state.getTime() != kInvalid)
     updated_state.setTime(image_time);
 
+  match_img = vio_updater_.getMatchImage();
   event_img = vio_updater_.getFeatureImage();
 
   return updated_state;
@@ -297,35 +296,10 @@ void EVIO::initAtTime(double now) {
     now > 0.0 ? now : std::numeric_limits<double>::epsilon();
 
   //////////////////////////////// xEKF INIT ///////////////////////////////////
- 
-  // Initial core covariance matrix
-  // TODO(jeff) read from params
-  const double sigma_dp_x = 0.0;
-  const double sigma_dp_y = 0.0;
-  const double sigma_dp_z = 0.0;
-  const double sigma_dv_x = 0.05;
-  const double sigma_dv_y = 0.05;
-  const double sigma_dv_z = 0.05;
-  const double sigma_dtheta_x = 3.0*M_PI/180.0;
-  const double sigma_dtheta_y = 3.0*M_PI/180.0;
-  const double sigma_dtheta_z = 3.0*M_PI/180.0;
-  const double sigma_dbw_x = 6.0*M_PI/180.0;
-  const double sigma_dbw_y = 6.0*M_PI/180.0;
-  const double sigma_dbw_z = 6.0*M_PI/180.0;
-  const double sigma_dba_x = 0.3;
-  const double sigma_dba_y = 0.3;
-  const double sigma_dba_z = 0.3;
-  const double sigma_dtheta_ic_x = 1.0 * M_PI / 180.0;
-  const double sigma_dtheta_ic_y = 1.0 * M_PI / 180.0;
-  const double sigma_dtheta_ic_z = 1.0 * M_PI / 180.0;
-  const double sigma_dp_ic_x = 0.01;
-  const double sigma_dp_ic_y = 0.01;
-  const double sigma_dp_ic_z = 0.01;
-
-  const size_t n_poses_state = params_.n_poses_max;
-  const size_t n_features_state = params_.n_slam_features_max;
 
   // Initial vision state estimates and uncertainties are all zero
+  const size_t n_poses_state = params_.n_poses_max;
+  const size_t n_features_state = params_.n_slam_features_max;
   const Matrix p_array = Matrix::Zero(n_poses_state * 3, 1);
   const Matrix q_array = Matrix::Zero(n_poses_state * 4, 1);
   const Matrix f_array = Matrix::Zero(n_features_state * 3, 1);
@@ -336,17 +310,15 @@ void EVIO::initAtTime(double now) {
   // Construct initial covariance matrix
   const size_t n_err = kSizeCoreErr + n_poses_state * 6 + n_features_state * 3;
   Eigen::VectorXd sigma_diag(n_err);
-  sigma_diag << sigma_dp_x, sigma_dp_y, sigma_dp_z,
-                sigma_dv_x, sigma_dv_y, sigma_dv_z,
-                sigma_dtheta_x, sigma_dtheta_y, sigma_dtheta_z,
-                sigma_dbw_x, sigma_dbw_y, sigma_dbw_z,
-                sigma_dba_x, sigma_dba_y, sigma_dba_z,
-                sigma_dtheta_ic_x, sigma_dtheta_ic_y, sigma_dtheta_ic_z,
-                sigma_dp_ic_x, sigma_dp_ic_y, sigma_dp_ic_z,
+  sigma_diag << params_.sigma_dp,
+                params_.sigma_dv,
+                params_.sigma_dtheta * M_PI / 180.0,
+                params_.sigma_dbw * M_PI / 180.0,
+                params_.sigma_dba,
                 sigma_p_array, sigma_q_array, sigma_f_array;
 
   const Eigen::VectorXd cov_diag = sigma_diag.array() * sigma_diag.array();
-  const Matrix cov = cov_diag.asDiagonal(); 
+  const Matrix cov = cov_diag.asDiagonal();
 
   // Construct initial state
   const unsigned int dummy_seq = 0;

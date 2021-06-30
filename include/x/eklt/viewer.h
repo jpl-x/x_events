@@ -4,8 +4,8 @@
 
 #include <opencv2/core/core.hpp>
 
-#include "patch.h"
-#include "types.h"
+#include <x/eklt/eklt_patch.h>
+#include <x/eklt/types.h>
 
 
 namespace x {
@@ -14,14 +14,14 @@ namespace x {
  */
   class Viewer {
   public:
-    explicit Viewer(EkltParams params = {});
+    explicit Viewer(Params params = {});
 
     ~Viewer() = default;
 
     /**
      * @brief updates the EKLT parameters
      */
-    void setParams(const EkltParams &params);
+    void setParams(const Params &params);
 
     void renderView();
 
@@ -51,7 +51,7 @@ namespace x {
      */
 //    void publishImage(cv::Mat image, ros::Time stamp, std::string encoding, image_transport::Publisher pub);
 
-    EkltParams params_;
+    Params params_;
 
     FeatureTrackData feature_track_data_;
 

@@ -7,13 +7,14 @@
 #include <x/vio/tools.h>
 #include <x/vision/types.h>
 
-#include <x/eklt/tracker.h>
+#include <x/eklt/eklt_tracker.h>
 
 #include <iostream>
 
 // if Boost was compiled with BOOST_NO_EXCEPTIONS defined, it expects a user
 // defined trow_exception function, so define a dummy here, if this is the case
 #include <exception>
+#include <utility>
 
 using namespace x;
 
@@ -24,19 +25,20 @@ namespace boost {
 }
 
 
-EKLTVIO::EKLTVIO()
+EKLTVIO::EKLTVIO(XVioPerformanceLoggerPtr xvio_perf_logger, EkltPerformanceLoggerPtr eklt_perf_logger)
   : ekf_{Ekf(vio_updater_)}
   , msckf_baseline_n_(-1.0)
   , eklt_viewer_()
-  , eklt_tracker_(x::Camera(), eklt_viewer_) {
+  , eklt_tracker_(x::Camera(), eklt_viewer_)
+  , xvio_perf_logger_(std::move(xvio_perf_logger))
+  , eklt_perf_logger_(std::move(eklt_perf_logger)) {
 }
 
 bool EKLTVIO::isInitialized() const {
-  return initialized_;
+  return ekf_.getInitStatus() == InitStatus::kInitialized;
 }
 
-void EKLTVIO::setUp(const x::Params &params, const x::EkltParams &eklt_params,
-                    const XVioPerformanceLoggerPtr& xvio_perf_logger, const EkltPerformanceLoggerPtr& perf_logger) {
+void EKLTVIO::setUp(const x::Params &params) {
   const x::Camera cam(params.cam_fx, params.cam_fy, params.cam_cx, params.cam_cy, params.cam_distortion_model,
                       params.cam_distortion_parameters, params.img_width, params.img_height);
   const x::Tracker tracker(cam, params.fast_detection_delta, params.non_max_supp, params.block_half_length,
@@ -47,15 +49,15 @@ void EKLTVIO::setUp(const x::Params &params, const x::EkltParams &eklt_params,
   msckf_baseline_n_ = params.msckf_baseline / (params.img_width * params.cam_fx);
 
   // Set up tracker and track manager
-  const TrackManager track_manager(cam, msckf_baseline_n_, xvio_perf_logger);
+  const TrackManager track_manager(cam, msckf_baseline_n_, xvio_perf_logger_);
   params_ = params;
   camera_ = cam;
   tracker_ = tracker;
   track_manager_ = track_manager;
 
   // sets also EKLT params in viewer and optimizer class
-  eklt_tracker_.setParams(eklt_params);
-  eklt_tracker_.setPerfLogger(perf_logger);
+  eklt_tracker_.setParams(params);
+  eklt_tracker_.setPerfLogger(eklt_perf_logger_);
   eklt_tracker_.setCamera(camera_);
 
   // Set up EKLTVIO state manager
@@ -87,19 +89,15 @@ void EKLTVIO::setUp(const x::Params &params, const x::EkltParams &eklt_params,
                                 params_.iekf_iter);
 
   // EKF setup
-  const size_t state_buffer_sz = params_.ekf_state_buffer_size;
   const State default_state = State(n_poses_state, n_features_state);
-  const double a_m_max = 50.0;
-  const unsigned int delta_seq_imu = 1;
-  const double time_margin_bfr = 0.02;
   ekf_.set(vio_updater_,
            g,
            imu_noise,
-           state_buffer_sz,
+           params_.state_buffer_size,
            default_state,
-           a_m_max,
-           delta_seq_imu,
-           time_margin_bfr);
+           params.a_m_max,
+           params_.delta_seq_imu,
+           params_.state_buffer_time_margin);
 }
 
 void EKLTVIO::setLastRangeMeasurement(x::RangeMeasurement range_measurement) {
@@ -164,30 +162,44 @@ State EKLTVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_pt
 //  std::cout << "Events at timestamps [" << std::setprecision(17) << events_ptr->events.front().ts << ", " << events_ptr->events.back().ts
 //            << "] received in xEKLTVIO class." << std::endl;
 
-  bool matches_have_changed = eklt_tracker_.processEvents(events_ptr);
+  auto match_lists_for_ekf_updates = eklt_tracker_.processEvents(events_ptr);
 
-  if (!matches_have_changed)
-    return State();
+  auto most_recent_state = State();
 
-  auto match_img = eklt_tracker_.getCurrentImage().clone();
+  double most_recent_timestamp = -1.0;
 
-  const MatchList &matches = eklt_tracker_.getMatches();
-  VioMeasurement measurement(matches.back().current.getTimestamp(),
-                             seq++,
-                             matches,
-                             match_img,
-                             last_range_measurement_,
-                             last_angle_measurement_);
-  vio_updater_.setMeasurement(measurement);
+  for (const auto& matches : match_lists_for_ekf_updates) {
+    if (matches.empty())
+      continue;
 
-  // Process update measurement with xEKF
-  State updated_state = ekf_.processUpdateMeasurement();
+    auto match_img = eklt_tracker_.getCurrentImage().clone();
 
-  // Populate GUI image outputs
-  eklt_tracker_.renderVisualization(tracker_img);
-  feature_img = vio_updater_.getFeatureImage();
+    const auto timestamp = matches.back().current.getTimestamp();
 
-  return updated_state;
+    const double timestamp_corrected = timestamp + params_.time_offset;
+
+    VioMeasurement measurement(timestamp_corrected,
+                               seq_++,
+                               matches,
+                               match_img,
+                               last_range_measurement_,
+                               last_angle_measurement_);
+    vio_updater_.setMeasurement(measurement);
+
+    // Process update measurement with xEKF
+    most_recent_state = ekf_.processUpdateMeasurement();
+    most_recent_timestamp = timestamp;
+  }
+
+  if(most_recent_state.getTime() != kInvalid) {
+    most_recent_state.setTime(most_recent_timestamp);
+
+    // Populate GUI image outputs
+    eklt_tracker_.renderVisualization(tracker_img);
+    feature_img = vio_updater_.getFeatureImage();
+  }
+
+  return most_recent_state;
 }
 
 /** Calls the state manager to compute the cartesian coordinates of the SLAM features.
@@ -200,7 +212,6 @@ EKLTVIO::computeSLAMCartesianFeaturesForState(
 
 void EKLTVIO::initAtTime(double now) {
   ekf_.lock();
-  initialized_ = false;
   vio_updater_.track_manager_.clear();
   vio_updater_.state_manager_.clear();
 
@@ -216,34 +227,9 @@ void EKLTVIO::initAtTime(double now) {
 
   //////////////////////////////// xEKF INIT ///////////////////////////////////
 
-  // Initial core covariance matrix
-  // TODO(jeff) read from params
-  const double sigma_dp_x = 0.0;
-  const double sigma_dp_y = 0.0;
-  const double sigma_dp_z = 0.0;
-  const double sigma_dv_x = 0.05;
-  const double sigma_dv_y = 0.05;
-  const double sigma_dv_z = 0.05;
-  const double sigma_dtheta_x = 3.0 * M_PI / 180.0;
-  const double sigma_dtheta_y = 3.0 * M_PI / 180.0;
-  const double sigma_dtheta_z = 3.0 * M_PI / 180.0;
-  const double sigma_dbw_x = 6.0 * M_PI / 180.0;
-  const double sigma_dbw_y = 6.0 * M_PI / 180.0;
-  const double sigma_dbw_z = 6.0 * M_PI / 180.0;
-  const double sigma_dba_x = 0.3;
-  const double sigma_dba_y = 0.3;
-  const double sigma_dba_z = 0.3;
-  const double sigma_dtheta_ic_x = 1.0 * M_PI / 180.0;
-  const double sigma_dtheta_ic_y = 1.0 * M_PI / 180.0;
-  const double sigma_dtheta_ic_z = 1.0 * M_PI / 180.0;
-  const double sigma_dp_ic_x = 0.01;
-  const double sigma_dp_ic_y = 0.01;
-  const double sigma_dp_ic_z = 0.01;
-
+  // Initial vision state estimates and uncertainties are all zero
   const size_t n_poses_state = params_.n_poses_max;
   const size_t n_features_state = params_.n_slam_features_max;
-
-  // Initial vision state estimates and uncertainties are all zero
   const Matrix p_array = Matrix::Zero(n_poses_state * 3, 1);
   const Matrix q_array = Matrix::Zero(n_poses_state * 4, 1);
   const Matrix f_array = Matrix::Zero(n_features_state * 3, 1);
@@ -254,14 +240,12 @@ void EKLTVIO::initAtTime(double now) {
   // Construct initial covariance matrix
   const size_t n_err = kSizeCoreErr + n_poses_state * 6 + n_features_state * 3;
   Eigen::VectorXd sigma_diag(n_err);
-  sigma_diag << sigma_dp_x, sigma_dp_y, sigma_dp_z,
-    sigma_dv_x, sigma_dv_y, sigma_dv_z,
-    sigma_dtheta_x, sigma_dtheta_y, sigma_dtheta_z,
-    sigma_dbw_x, sigma_dbw_y, sigma_dbw_z,
-    sigma_dba_x, sigma_dba_y, sigma_dba_z,
-    sigma_dtheta_ic_x, sigma_dtheta_ic_y, sigma_dtheta_ic_z,
-    sigma_dp_ic_x, sigma_dp_ic_y, sigma_dp_ic_z,
-    sigma_p_array, sigma_q_array, sigma_f_array;
+  sigma_diag << params_.sigma_dp,
+                params_.sigma_dv,
+                params_.sigma_dtheta * M_PI / 180.0,
+                params_.sigma_dbw * M_PI / 180.0,
+                params_.sigma_dba,
+                sigma_p_array, sigma_q_array, sigma_f_array;
 
   const Eigen::VectorXd cov_diag = sigma_diag.array() * sigma_diag.array();
   const Matrix cov = cov_diag.asDiagonal();
@@ -287,7 +271,7 @@ void EKLTVIO::initAtTime(double now) {
   // Try to initialize the filter with initial state input
   try {
     ekf_.initializeFromState(init_state);
-  } catch (std::runtime_error &e) {
+  } catch (std::runtime_error& e) {
     std::cerr << "bad input: " << e.what() << std::endl;
   } catch (init_bfr_mismatch) {
     std::cerr << "init_bfr_mismatch: the size of dynamic arrays in the "
@@ -295,8 +279,6 @@ void EKLTVIO::initAtTime(double now) {
                  "the buffered states." << std::endl;
   }
   ekf_.unlock();
-
-  initialized_ = true;
 }
 
 /** \brief Gets 3D coordinates of MSCKF inliers and outliers.

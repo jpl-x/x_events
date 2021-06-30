@@ -19,8 +19,6 @@
 #include <x/vision/types.h>
 #include <easy/profiler.h>
 
-#include <x/eklt/tracker.h>
-
 #include <iostream>
 
 // if Boost was compiled with BOOST_NO_EXCEPTIONS defined, it expects a user
@@ -37,8 +35,9 @@ void throw_exception(std::exception const & e) {}; // user defined
 }
 
 
-VIO::VIO() 
-  : ekf_ { Ekf(vio_updater_) }
+VIO::VIO(XVioPerformanceLoggerPtr xvio_perf_logger)
+  : ekf_(vio_updater_)
+  , xvio_perf_logger_(std::move(xvio_perf_logger))
 {
   // Initialize with invalid last range measurement
   // todo: Replace -1 with -min_delay
@@ -57,7 +56,7 @@ bool VIO::isInitialized() const {
   return ekf_.getInitStatus() == InitStatus::kInitialized;
 }
 
-void VIO::setUp(const x::Params& params, const XVioPerformanceLoggerPtr& xvio_perf_logger) {
+void VIO::setUp(const x::Params& params) {
   const x::Camera cam(params.cam_fx, params.cam_fy, params.cam_cx, params.cam_cy, params.cam_distortion_model,
                       params.cam_distortion_parameters, params.img_width, params.img_height);
   const x::Tracker tracker(cam, params.fast_detection_delta, params.non_max_supp, params.block_half_length,
@@ -68,7 +67,7 @@ void VIO::setUp(const x::Params& params, const XVioPerformanceLoggerPtr& xvio_pe
   msckf_baseline_n_ = params.msckf_baseline / (params.img_width * params.cam_fx);
 
   // Set up tracker and track manager
-  const TrackManager track_manager(cam, msckf_baseline_n_, xvio_perf_logger);
+  const TrackManager track_manager(cam, msckf_baseline_n_, xvio_perf_logger_);
   params_ = params;
   camera_ = cam;
   tracker_ = tracker;
@@ -104,19 +103,15 @@ void VIO::setUp(const x::Params& params, const XVioPerformanceLoggerPtr& xvio_pe
                             params_.iekf_iter);
 
   // EKF setup
-  const size_t state_buffer_sz = params_.ekf_state_buffer_size;
   const State default_state = State(n_poses_state, n_features_state);
-  const double a_m_max = 50.0;
-  const unsigned int delta_seq_imu = 1;
-  const double time_margin_bfr = 0.02;
   ekf_.set(vio_updater_,
            g,
            imu_noise,
-           state_buffer_sz,
+           params_.state_buffer_size,
            default_state,
-           a_m_max,
-           delta_seq_imu,
-           time_margin_bfr);
+           params.a_m_max,
+           params_.delta_seq_imu,
+           params_.state_buffer_time_margin);
 }
 
 void VIO::setLastRangeMeasurement(x::RangeMeasurement range_measurement) {
@@ -210,21 +205,6 @@ State VIO::processMatchesMeasurement(double timestamp,
   return updated_state;
 }
 
-State VIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr)
-{
-#ifdef DEBUG
-  std::cout << "Events at timestamp " << events_ptr->events.front().ts
-            << " received in xVIO class." << std::endl;
-#endif
-
-//  Viewer v;
-//  EkltTracker t(v);
-//  t.processEvents(events_ptr);
-
-  // Return invalid state for now
-  return State();
-}
-
 /** Calls the state manager to compute the cartesian coordinates of the SLAM features.
  */
 std::vector<Eigen::Vector3d>
@@ -249,35 +229,10 @@ void VIO::initAtTime(double now) {
     now > 0.0 ? now : std::numeric_limits<double>::epsilon();
 
   //////////////////////////////// xEKF INIT ///////////////////////////////////
- 
-  // Initial core covariance matrix
-  // TODO(jeff) read from params
-  const double sigma_dp_x = 0.0;
-  const double sigma_dp_y = 0.0;
-  const double sigma_dp_z = 0.0;
-  const double sigma_dv_x = 0.05;
-  const double sigma_dv_y = 0.05;
-  const double sigma_dv_z = 0.05;
-  const double sigma_dtheta_x = 3.0*M_PI/180.0;
-  const double sigma_dtheta_y = 3.0*M_PI/180.0;
-  const double sigma_dtheta_z = 3.0*M_PI/180.0;
-  const double sigma_dbw_x = 6.0*M_PI/180.0;
-  const double sigma_dbw_y = 6.0*M_PI/180.0;
-  const double sigma_dbw_z = 6.0*M_PI/180.0;
-  const double sigma_dba_x = 0.3;
-  const double sigma_dba_y = 0.3;
-  const double sigma_dba_z = 0.3;
-  const double sigma_dtheta_ic_x = 1.0 * M_PI / 180.0;
-  const double sigma_dtheta_ic_y = 1.0 * M_PI / 180.0;
-  const double sigma_dtheta_ic_z = 1.0 * M_PI / 180.0;
-  const double sigma_dp_ic_x = 0.01;
-  const double sigma_dp_ic_y = 0.01;
-  const double sigma_dp_ic_z = 0.01;
-
-  const size_t n_poses_state = params_.n_poses_max;
-  const size_t n_features_state = params_.n_slam_features_max;
 
   // Initial vision state estimates and uncertainties are all zero
+  const size_t n_poses_state = params_.n_poses_max;
+  const size_t n_features_state = params_.n_slam_features_max;
   const Matrix p_array = Matrix::Zero(n_poses_state * 3, 1);
   const Matrix q_array = Matrix::Zero(n_poses_state * 4, 1);
   const Matrix f_array = Matrix::Zero(n_features_state * 3, 1);
@@ -288,17 +243,15 @@ void VIO::initAtTime(double now) {
   // Construct initial covariance matrix
   const size_t n_err = kSizeCoreErr + n_poses_state * 6 + n_features_state * 3;
   Eigen::VectorXd sigma_diag(n_err);
-  sigma_diag << sigma_dp_x, sigma_dp_y, sigma_dp_z,
-                sigma_dv_x, sigma_dv_y, sigma_dv_z,
-                sigma_dtheta_x, sigma_dtheta_y, sigma_dtheta_z,
-                sigma_dbw_x, sigma_dbw_y, sigma_dbw_z,
-                sigma_dba_x, sigma_dba_y, sigma_dba_z,
-                sigma_dtheta_ic_x, sigma_dtheta_ic_y, sigma_dtheta_ic_z,
-                sigma_dp_ic_x, sigma_dp_ic_y, sigma_dp_ic_z,
+  sigma_diag << params_.sigma_dp,
+                params_.sigma_dv,
+                params_.sigma_dtheta * M_PI / 180.0,
+                params_.sigma_dbw * M_PI / 180.0,
+                params_.sigma_dba,
                 sigma_p_array, sigma_q_array, sigma_f_array;
 
   const Eigen::VectorXd cov_diag = sigma_diag.array() * sigma_diag.array();
-  const Matrix cov = cov_diag.asDiagonal(); 
+  const Matrix cov = cov_diag.asDiagonal();
 
   // Construct initial state
   const unsigned int dummy_seq = 0;
@@ -361,8 +314,9 @@ x::MatchList VIO::importMatches(const std::vector<double>& match_vector,
   // 6,7,8: 3D coordinate of feature
 
   // Number of matches in the input vector
-  assert(match_vector.size() % 9 == 0);
-  const unsigned int n_matches = match_vector.size() / 9;
+  const unsigned int feature_arr_blk_sz = 10; // Length of a feature block in match vector
+  assert(match_vector.size() %  feature_arr_blk_sz == 0);
+  const unsigned int n_matches = match_vector.size() / feature_arr_blk_sz;
 
   // Declare new lists
   x::MatchList matches(n_matches);
@@ -371,18 +325,18 @@ x::MatchList VIO::importMatches(const std::vector<double>& match_vector,
   for (unsigned int i = 0; i < n_matches; ++i)
   {
     // Undistortion
-    const double x_dist_prev = match_vector[9 * i + 1];
-    const double y_dist_prev = match_vector[9 * i + 2];
+    const double x_dist_prev = match_vector[feature_arr_blk_sz * i + 2];
+    const double y_dist_prev = match_vector[feature_arr_blk_sz * i + 3];
 
-    const double x_dist_curr = match_vector[9 * i + 4];
-    const double y_dist_curr = match_vector[9 * i + 5];
+    const double x_dist_curr = match_vector[feature_arr_blk_sz * i + 5];
+    const double y_dist_curr = match_vector[feature_arr_blk_sz * i + 6];
 
     // Features and match initializations
-    x::Feature previous_feature(match_vector[9 * i] + params_.time_offset, seq - 1, 0.0, 0.0, x_dist_prev,
+    x::Feature previous_feature(match_vector[feature_arr_blk_sz * i + 1] + params_.time_offset, seq - 1, 0.0, 0.0, x_dist_prev,
                                       y_dist_prev);
     camera_.undistortFeature(previous_feature);
 
-    x::Feature current_feature(match_vector[9 * i + 3] + params_.time_offset, seq, 0.0, 0.0, x_dist_curr,
+    x::Feature current_feature(match_vector[feature_arr_blk_sz * i + 4] + params_.time_offset, seq, 0.0, 0.0, x_dist_curr,
                                      y_dist_curr);
     camera_.undistortFeature(current_feature);
 

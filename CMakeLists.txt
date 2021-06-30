@@ -13,10 +13,15 @@ set(UNIT_TESTS false) # Set true to enable unit tests
 #################################################################################
 
 cmake_minimum_required(VERSION 2.8.3)
+cmake_policy(SET CMP0048 NEW)  # avoids CMAKE_PROJECT_VERSION warning
 project(x)
-set (CMAKE_BUILD_TYPE Release)
 
-#set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Og") # REMOVE ME LATER
+set(CMAKE_BUILD_TYPE Release)
+
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Og") # REMOVE ME LATER
+
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Og -fno-omit-frame-pointer -fsanitize=address") # REMOVE ME LATER
+#set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -g -Og -fno-omit-frame-pointer -fsanitize=address") # REMOVE ME LATER
 
 # Set definitions
 if(DUAL_THREAD)
@@ -141,9 +146,9 @@ set (SOURCE
   src/x/vision/timing.cpp
   src/x/vision/tracker.cpp
   src/x/vision/triangulation.cpp
-  src/x/eklt/eklt_node.cpp
   src/x/eklt/optimizer.cpp
-  src/x/eklt/tracker.cpp
+  src/x/eklt/eklt_tracker.cpp
+  src/x/eklt/async_feature_interpolator.cpp
   src/x/eklt/viewer.cpp
   src/x/eklt/eklt_vio_updater.cpp
   src/x/eklt/eklt_vio.cpp

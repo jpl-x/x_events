@@ -2,36 +2,34 @@
 #include <x/eklt/optimizer.h>
 #include <easy/profiler.h>
 
+#include <utility>
+
 
 using namespace x;
 
-Optimizer::Optimizer(EkltParams params, EkltPerformanceLoggerPtr perf_logger)
-  : params_(std::move(params)), perf_logger_(perf_logger), patch_size_(params_.patch_size) {
-  prob_options.cost_function_ownership = ceres::DO_NOT_TAKE_OWNERSHIP;
-  prob_options.local_parameterization_ownership = ceres::DO_NOT_TAKE_OWNERSHIP;
-  prob_options.loss_function_ownership = ceres::DO_NOT_TAKE_OWNERSHIP;
+Optimizer::Optimizer(Params params, EkltPerformanceLoggerPtr perf_logger)
+  : params_(std::move(params)), perf_logger_(std::move(perf_logger)), patch_size_(params_.eklt_patch_size) {
+  // EDIT: let ceres take ownership of these objects function to avoid leaks / double frees
+//  prob_options.cost_function_ownership = ceres::DO_NOT_TAKE_OWNERSHIP;
+//  prob_options.local_parameterization_ownership = ceres::DO_NOT_TAKE_OWNERSHIP;
+//  prob_options.loss_function_ownership = ceres::DO_NOT_TAKE_OWNERSHIP;
 
   solver_options.minimizer_progress_to_stdout = false;
   solver_options.num_threads = 1;
   solver_options.linear_solver_type = ceres::DENSE_QR;
   solver_options.logging_type = ceres::SILENT;
-  solver_options.max_num_iterations = params_.max_num_iterations;
+  solver_options.max_num_iterations = params_.eklt_max_num_iterations;
   solver_options.use_nonmonotonic_steps = true;
-
-  loss_function = nullptr;
-  cost_function_ = nullptr;
 }
 
 
-void Optimizer::setParams(const EkltParams &params) {
+void Optimizer::setParams(const Params &params) {
   params_ = params;
 }
 
 Optimizer::~Optimizer() {
   for (auto &it : optimizer_data_)
     it.second.clear();
-
-  delete cost_function_;
 }
 
 void Optimizer::decrementCounter(double time) {
@@ -48,12 +46,27 @@ void Optimizer::decrementCounter(double time) {
 
 void Optimizer::getLogGradients(const cv::Mat &img, cv::Mat &I_x, cv::Mat &I_y) {
   // compute log gradients of image
-  const double &log_eps = params_.log_eps;
+  const double &log_eps = params_.eklt_log_eps;
+  cv::Mat log_image;
 
-  cv::Mat normalized_image, log_image;
+  if (params_.eklt_use_linlog_scale) {
+    const uint8_t threshold = 20;
 
-  img.convertTo(normalized_image, CV_64F, 1.0 / 255.0);
-  cv::log(normalized_image + log_eps, log_image);
+    cv::Mat mask = img > threshold;
+
+    cv::Mat lin_image, img_float;
+    img.convertTo(img_float, CV_64F, 1.0);
+
+    log_image = cv::Mat::ones(img.size(), CV_64F) * threshold;
+    cv::copyTo(img_float, log_image, mask);
+    cv::log(log_image, log_image);
+    img.convertTo(lin_image, CV_64F, 1.0 / threshold * log(threshold));
+    cv::copyTo(lin_image, log_image, ~mask);
+  } else {
+    cv::Mat normalized_image;
+    img.convertTo(normalized_image, CV_64F, 1.0 / 255.0);
+    cv::log(normalized_image + log_eps, log_image);
+  }
 
   cv::Sobel(log_image / 8, I_x, CV_64F, 1, 0, 3);
   cv::Sobel(log_image / 8, I_y, CV_64F, 0, 1, 3);
@@ -78,10 +91,9 @@ void Optimizer::precomputeLogImageArray(const Patches &patches, const ImageBuffe
   optimizer_data_[t] = OptimizerDatum(grad, image_it->second, patches.size());
 }
 
-void Optimizer::optimizeParameters(const cv::Mat &event_frame, Patch &patch, double t) {
+void Optimizer::optimizeParameters(const cv::Mat &event_frame, EkltPatch &patch, double t) {
   auto start = profiler::now();
   EASY_FUNCTION();
-  double norm = 0;
 
   ceres::Problem problem(prob_options);
   ceres::Solver::Summary summary;
@@ -93,22 +105,18 @@ void Optimizer::optimizeParameters(const cv::Mat &event_frame, Patch &patch, dou
 
   // create cost functor that depends on the event frame, and current and initial
   // patch location
-  ErrorRotation *functor;
-  cost_function_ = Generator::Create(patch.center_,
+  auto cost_function = Generator::Create(patch.getCenter(),
                                      patch.init_center_,
                                      &event_frame,
-                                     optimizer_data_[patch.t_init_].grad_interp_,
-                                     functor);
+                                     optimizer_data_[patch.t_init_].grad_interp_);
 
-  problem.AddResidualBlock(cost_function_, NULL, p0, v0);
+  problem.AddResidualBlock(cost_function, nullptr, p0, v0);
 
   ceres::Solve(solver_options, &problem, &summary);
 
   // update patch according to new optimizer
   cv::Mat camera_warp;
   ErrorRotation::getWarp(p0, camera_warp);
-
-  delete functor;
 
   // update state of patch
   patch.warping_ = camera_warp.clone();

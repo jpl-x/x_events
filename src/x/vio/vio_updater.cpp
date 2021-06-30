@@ -215,7 +215,7 @@ void VioUpdater::constructUpdate(const State& state,
   /* Range-SLAM */
 
   size_t rows_lrf = 0;
-  Matrix h_lrf, res_lrf;
+  Matrix h_lrf = Matrix::Zero(0, P.cols()), res_lrf = Matrix::Zero(0, 1);
   Eigen::VectorXd r_lrf_diag;
 
   if (measurement_.range.timestamp > 0.1 && slam_trks_.size()) {
@@ -253,7 +253,7 @@ void VioUpdater::constructUpdate(const State& state,
   /* Sun Sensor */
 
   size_t rows_sns = 0;
-  Matrix h_sns, res_sns;
+  Matrix h_sns = Matrix::Zero(0, P.cols()), res_sns = Matrix::Zero(0, 1);
   Eigen::VectorXd r_sns_diag;
 
   if (measurement_.sun_angle.timestamp > -1) {
@@ -306,18 +306,26 @@ void VioUpdater::constructUpdate(const State& state,
 void VioUpdater::postUpdate(State& state, const Matrix& correction) {
   // MSCKF-SLAM feature init
   // Insert all new MSCKF-SLAM features in state and covariance
-  if (new_msckf_slam_trks_.size()) {
+  if (!new_msckf_slam_trks_.empty()) {
     // TODO(jeff) Do not initialize features which have failed the
     // Mahalanobis test. They need to be removed from the track
     // manager too.
-    state_manager_.initMsckfSlamFeatures(state,
-                                         msckf_slam_.getInitMats(),
-                                         correction,
-                                         sigma_img_);
+    auto success = state_manager_.initMsckfSlamFeatures(state, msckf_slam_.getInitMats(), correction, sigma_img_);
+    if (!success) {
+      std::vector<unsigned int> bad_indices;
+      bad_indices.reserve(track_manager_.getNewSlamMsckfTracks().size());
+
+      // remove all new slam msckf tracks, which have indices 0...n-1, because of the way they are inserted.
+      for (unsigned int i = 0; i < track_manager_.getNewSlamMsckfTracks().size(); ++i) {
+        bad_indices.push_back(i);
+      }
+
+      track_manager_.removeNewPersistentTracksAtIndexes(bad_indices);
+    }
   }
 
   // STANDARD SLAM feature initialization
-  if (new_slam_std_trks_.size()) {
+  if (!new_slam_std_trks_.empty()) {
     // Compute inverse-depth coordinates of new SLAM features
     Matrix features_slam_std;
     slam_.computeInverseDepthsNew(new_slam_std_trks_, rho_0_, features_slam_std);

@@ -33,8 +33,9 @@ namespace x {
   class TrackManager
   {
     public:
-      TrackManager(XVioPerformanceLoggerPtr xvio_perf_logger = nullptr);
+      explicit TrackManager(XVioPerformanceLoggerPtr xvio_perf_logger = nullptr);
       TrackManager(const Camera& camera, const double min_baseline_n, XVioPerformanceLoggerPtr xvio_perf_logger = nullptr);
+      ~TrackManager();
       void setCamera(Camera camera);
 
       // All track getters are in normalized image coordinates
@@ -79,10 +80,10 @@ namespace x {
        * @param[out] img Output image for GUI
        */ 
       void manageTracks(MatchList& matches,
-          const AttitudeList& cam_rots,
-          int n_poses_max,
-          int n_slam_features_max,
-          int min_track_length,
+          const AttitudeList cam_rots,
+          const size_t n_poses_max,
+          const size_t n_slam_features_max,
+          const size_t min_track_length,
           TiledImage& img);
 
       std::vector<int> featureTriangleAtPoint(const Feature& lrf_img_pt, TiledImage& img) const;
@@ -131,6 +132,11 @@ namespace x {
        *                             processed.
        */
       void plotFeatures(TiledImage& img, int min_track_length);
+
+
+      void dumpTrackToPerfLogger(const Track &track, const std::string& update_info);
+
+      uint32_t track_dump_id_ = 0;
   };
 } // namespace x
 
