@@ -155,6 +155,11 @@ namespace x
     int iekf_iter;
 
     /**
+     * Size of EKF state buffer.
+     */
+    int ekf_state_buffer_size;
+
+    /**
      * Minimum baseline to trigger MSCKF measurement (pixels).
      */
     double msckf_baseline;
