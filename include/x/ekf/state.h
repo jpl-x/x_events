@@ -116,6 +116,10 @@ namespace x
 
       Matrix getCovariance() const;
 
+      Vector3 getAccBias() const;
+
+      Vector3 getGyroBias() const;
+
       /**
        * Assembles and returns 6x6 covariance of the pose error (dp,dq).
        *

@@ -291,3 +291,11 @@ Quaternion State::errorQuatFromSmallAngles(const Vector3& delta_theta) const {
     return delta_q;
   }
 }
+
+Vector3 State::getAccBias() const {
+  return b_a_;
+}
+
+Vector3 State::getGyroBias() const {
+  return b_w_;
+}
