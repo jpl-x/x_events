@@ -109,7 +109,7 @@ x::Feature x::AsyncFeatureInterpolator::createUndistortedFeature(double t, doubl
   return f;
 }
 
-x::MatchList x::AsyncFeatureInterpolator::getMatchListFromPatches(std::vector<const AsyncPatch *> active_patches) {
+x::MatchList x::AsyncFeatureInterpolator::getMatchListFromPatches(const std::vector<AsyncPatch *>& active_patches) {
   EASY_FUNCTION();
 
   double interpolation_time = getInterpolationTime(active_patches);
@@ -170,7 +170,7 @@ x::MatchList x::AsyncFeatureInterpolator::refineMatches(x::MatchList &matches) c
   return matches_refined;
 }
 
-double x::AsyncFeatureInterpolator::getInterpolationTime(std::vector<const AsyncPatch *> &active_patches) const {
+double x::AsyncFeatureInterpolator::getInterpolationTime(const std::vector<AsyncPatch *>& active_patches) const {
   double interpolation_time = std::numeric_limits<double>::lowest();
   int N = 0;
 

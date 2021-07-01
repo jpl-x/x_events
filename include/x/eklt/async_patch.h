@@ -18,6 +18,7 @@ namespace x {
     friend class AsyncFeatureInterpolator;
 
     AsyncPatch() = default;
+    virtual ~AsyncPatch() = default;
 
     void resetTrack(double t, const cv::Point2d& center) {
       track_hist_.clear();

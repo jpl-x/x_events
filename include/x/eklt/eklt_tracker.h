@@ -39,10 +39,10 @@ namespace x {
     }
 
 
-    std::vector<const AsyncPatch* > getActivePatches() {
-      std::vector<const AsyncPatch* > ret;
+    std::vector<AsyncPatch* > getActivePatches() {
+      std::vector<AsyncPatch* > ret;
       ret.reserve(patches_.size()); // prepare for best case
-      for (const auto& p : patches_)
+      for (auto& p : patches_)
         if (!p.lost_)
           ret.push_back(&p);
       return ret;
@@ -113,7 +113,7 @@ namespace x {
     /**
      * @brief update a patch with the new event, return true if patch position has been updated
      */
-    bool updatePatch(EkltPatch &patch, const Event &event);
+    bool updatePatch(AsyncPatch &patch, const Event &event);
 
     /**
      * @brief reset patches that have been lost.

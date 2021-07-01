@@ -87,7 +87,8 @@ void EkltTracker::init(const ImageBuffer::iterator &image_it) {
     viewer_ptr_->initViewData(image_it->first);
 }
 
-bool EkltTracker::updatePatch(EkltPatch &patch, const Event &event) {
+bool EkltTracker::updatePatch(AsyncPatch &async_patch, const Event &event) {
+  auto& patch = dynamic_cast<EkltPatch&>(async_patch);
   // if patch is lost or event does not fall within patch
   // or the event has occurred before the most recent patch timestamp
   // or the patch has not been bootstrapped yet, do not process event
@@ -351,13 +352,9 @@ std::vector<MatchList> EkltTracker::processEvents(const EventArray::ConstPtr &ms
     else if (fabs(ev.ts - most_current_time_) > 1e-6)  // if order wrong and spaced more than 1us
       LOG(WARNING) << "Processing event behind most current time: " << std::setprecision(15) << ev.ts << " < " << most_current_time_ << ". Events might not be in order!";
 
-    int num_features_tracked = patches_.size();
     // go through each patch and update the event frame with the new event
-    for (EkltPatch &patch: patches_) {
-      did_some_patch_change |= updatePatch(patch, ev);
-      // count tracked features
-      if (patch.lost_)
-        num_features_tracked--;
+    for (AsyncPatch* patch: getActivePatches()) {
+      did_some_patch_change |= updatePatch(*patch, ev);
     }
 
     if (updateFirstImageBeforeTime(most_current_time_, current_image_it_)) // enter if new image found
