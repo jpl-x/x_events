@@ -118,7 +118,7 @@ State EKLTVIO::processImageMeasurement(double timestamp,
 
   // Track features
   auto match_image_tracker_copy = match_img.clone();
-  eklt_tracker_.processImage(timestamp_corrected, match_image_tracker_copy, seq);
+  eklt_tracker_.processImage(timestamp_corrected, match_image_tracker_copy);
   //  tracker_.track(match_image_tracker_copy, timestamp_corrected, seq);
 
   // EKLT does not provide an update from images

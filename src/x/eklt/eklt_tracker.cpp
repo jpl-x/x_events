@@ -18,9 +18,9 @@ using namespace x;
 
 EkltTracker::EkltTracker(Camera camera, Viewer &viewer, Params params, EkltPerformanceLoggerPtr p_logger)
   : params_(std::move(params)), perf_logger_(std::move(p_logger))
-  , sensor_size_(0, 0), got_first_image_(false), most_current_time_(-1.0)
+  , got_first_image_(false), most_current_time_(-1.0)
   , viewer_ptr_(&viewer), optimizer_(params_, perf_logger_)
-  , interpolator_(params, camera) {
+  , interpolator_(params, std::move(camera)) {
 }
 
 void EkltTracker::setParams(const Params &params) {
@@ -210,9 +210,10 @@ void EkltTracker::extractPatches(Patches &patches, const int &num_patches, const
 
   // mask areas which are within a distance min_distance of other features or along the border.
   int hp = (params_.eklt_patch_size - 1) / 2;
-  int h = sensor_size_.height;
-  int w = sensor_size_.width;
-  cv::Mat mask = cv::Mat::ones(sensor_size_, CV_8UC1);
+
+  int h = params_.img_height;
+  int w = params_.img_width;
+  cv::Mat mask = cv::Mat::ones(h, w, CV_8UC1);
   mask.rowRange(0, hp).colRange(0, w - 1).setTo(0);
   mask.rowRange(h - hp, h - 1).colRange(0, w - 1).setTo(0);
   mask.rowRange(0, h - 1).colRange(0, hp).setTo(0);
@@ -278,8 +279,8 @@ void EkltTracker::bootstrapFeatureKLT(EkltPatch &patch, const cv::Mat &last_imag
   patch.updateCenter(current_image_it_->first);
 
   // check if new patch has been lost due to leaving the fov
-  bool should_discard = bool(patch.getCenter().y < 0 || patch.getCenter().y >= sensor_size_.height || patch.getCenter().x < 0 ||
-                             patch.getCenter().x >= sensor_size_.width);
+  bool should_discard = bool(patch.getCenter().y < 0 || patch.getCenter().y >= params_.img_height || patch.getCenter().x < 0 ||
+                             patch.getCenter().x >= params_.img_width);
   if (should_discard) {
     patch.lost_ = true;
     lost_indices_.push_back(&patch - &patches_[0]);
@@ -407,13 +408,9 @@ std::vector<MatchList> EkltTracker::processEvents(const EventArray::ConstPtr &ms
   return match_lists_for_ekf_updates;
 }
 
-void EkltTracker::processImage(double timestamp, TiledImage &current_img, unsigned int frame_number) {
+void EkltTracker::processImage(double timestamp, TiledImage &current_img) {
   // tiling not implemented
   assert(current_img.getNTilesH() == 1 && current_img.getNTilesW() == 1);
-
-  if (sensor_size_.width <= 0)
-    sensor_size_ = cv::Size(current_img.getTileWidth(),
-                            current_img.getTileHeight());
   images_.insert(std::make_pair(timestamp, current_img.clone()));
 
   if (!got_first_image_) {

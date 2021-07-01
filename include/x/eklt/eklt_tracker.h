@@ -30,37 +30,41 @@ namespace x {
     /**
      * @brief updates the EKLT parameters in the tracker as well as in the associated viewer and optimizer
      */
-    void setParams(const Params& params);
+    void setParams(const Params &params);
 
-    void setPerfLogger(const EkltPerformanceLoggerPtr& perf_logger);
+    void setPerfLogger(const EkltPerformanceLoggerPtr &perf_logger);
 
-    void setCamera(const x::Camera& camera) {
+    void setCamera(const x::Camera &camera) {
       interpolator_.setCamera(camera);
     }
 
 
-    std::vector<AsyncPatch* > getActivePatches() {
-      std::vector<AsyncPatch* > ret;
+    std::vector<AsyncPatch *> getActivePatches() {
+      std::vector<AsyncPatch *> ret;
       ret.reserve(patches_.size()); // prepare for best case
-      for (auto& p : patches_)
+      for (auto &p : patches_)
         if (!p.lost_)
           ret.push_back(&p);
       return ret;
     }
 
-      /**
-     * @brief processes all events in array and returns true if matches have been updated.
-     */
-      std::vector<MatchList> processEvents(const EventArray::ConstPtr &msg);
+    /**
+   * @brief processes all events in array and returns true if matches have been updated.
+   */
+    std::vector<MatchList> processEvents(const EventArray::ConstPtr &msg);
 
-    // TODO why don't we use: current_img.getTimestamp(), current_img.getFrameNumber()
-    void processImage(double timestamp, TiledImage &current_img, unsigned int frame_number);
+    /**
+     * Processes new image. Timestamp is passed instead of using current_img.getTimestamp() to allow for corrections.
+     * @param timestamp corrected timestamp
+     * @param current_img APS frame
+     */
+    void processImage(double timestamp, TiledImage &current_img);
 
     TiledImage getCurrentImage() {
       return current_image_it_->second;
     }
 
-    void renderVisualization(TiledImage& tracker_debug_image_output);
+    void renderVisualization(TiledImage &tracker_debug_image_output);
 
   private:
     /**
@@ -147,8 +151,8 @@ namespace x {
       return exceeded_error || out_of_fov;
     }
 
-    inline bool isPointOutOfView(const cv::Point2d& p) const {
-      return (p.y < 0 || p.y >= sensor_size_.height || p.x < 0 || p.x >= sensor_size_.width);
+    inline bool isPointOutOfView(const cv::Point2d &p) const {
+      return (p.y < 0 || p.y >= params_.img_height || p.x < 0 || p.x >= params_.img_width);
     }
 
     /**
@@ -158,7 +162,6 @@ namespace x {
 
     Params params_;
     EkltPerformanceLoggerPtr perf_logger_;
-    cv::Size sensor_size_;
 
     // image flags
     bool got_first_image_;
