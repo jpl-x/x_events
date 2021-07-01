@@ -58,7 +58,7 @@ namespace x {
      * @param timestamp corrected timestamp
      * @param current_img APS frame
      */
-    void processImage(double timestamp, TiledImage &current_img);
+    void processImage(double timestamp, const TiledImage &current_img);
 
     TiledImage getCurrentImage() {
       return current_image_it_->second;
@@ -158,7 +158,7 @@ namespace x {
     /**
      * @brief sets the number of events to process adaptively according to equation (15) in the paper
      */
-    void setBatchSize(EkltPatch &patch, const cv::Mat &I_x, const cv::Mat &I_y, const double &d);
+    void setBatchSize(EkltPatch &patch, const double &d);
 
     Params params_;
     EkltPerformanceLoggerPtr perf_logger_;
@@ -176,7 +176,6 @@ namespace x {
 
     // patch parameters
     Patches patches_;
-    std::map<int, std::pair<cv::Mat, cv::Mat>> patch_gradients_;
     std::vector<int> lost_indices_;
 
     // delegation

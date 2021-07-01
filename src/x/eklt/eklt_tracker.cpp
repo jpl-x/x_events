@@ -57,18 +57,18 @@ void EkltTracker::initPatches(Patches &patches, std::vector<int> &lost_indices, 
   for (size_t i = 0; i < patches.size(); i++) {
     EkltPatch &patch = patches[i];
     if (patch.lost_) {
-      patch_gradients_[i] = std::make_pair(cv::Mat::zeros(2 * p + 1, 2 * p + 1, CV_64F),
+      patch.gradient_xy_ = std::make_pair(cv::Mat::zeros(2 * p + 1, 2 * p + 1, CV_64F),
                                            cv::Mat::zeros(2 * p + 1, 2 * p + 1, CV_64F));
     } else {
       const int x_min = patch.getCenter().x;
       const int y_min = patch.getCenter().y;
 
-      patch_gradients_[i] = std::make_pair(
+      patch.gradient_xy_ = std::make_pair(
         I_x_padded.rowRange(y_min, y_min + 2 * p + 1).colRange(x_min, x_min + 2 * p + 1).clone(),
         I_y_padded.rowRange(y_min, y_min + 2 * p + 1).colRange(x_min, x_min + 2 * p + 1).clone());
 
       // sets adaptive batch size based on gradients according to equation (15) in the paper
-      setBatchSize(patch, patch_gradients_[i].first, patch_gradients_[i].second, params_.eklt_displacement_px);
+      setBatchSize(patch, params_.eklt_displacement_px);
     }
   }
 }
@@ -128,8 +128,7 @@ bool EkltTracker::updatePatch(AsyncPatch &async_patch, const Event &event) {
     perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.getId(), EkltTrackUpdateType::Update,
                                          patch.getCurrentTime(), patch.getCenter().x, patch.getCenter().y, patch.flow_angle_);
 
-  setBatchSize(patch, patch_gradients_[&patch - &patches_[0]].first, patch_gradients_[&patch - &patches_[0]].second,
-               params_.eklt_displacement_px);
+  setBatchSize(patch, params_.eklt_displacement_px);
 
   if (shouldDiscard(patch)) {
     discardPatch(patch);
@@ -164,11 +163,13 @@ void EkltTracker::bootstrapAllPossiblePatches(Patches &patches, const ImageBuffe
     // perform bootstrapping using KLT and the first 2 frames, and compute the adaptive batch size
     // with the newly found parameters
     bootstrapFeatureKLT(patch, images_[patch.t_init_], image_it->second);
-    setBatchSize(patch, patch_gradients_[i].first, patch_gradients_[i].second, params_.eklt_displacement_px);
+    setBatchSize(patch, params_.eklt_displacement_px);
   }
 }
 
-void EkltTracker::setBatchSize(EkltPatch &patch, const cv::Mat &I_x, const cv::Mat &I_y, const double &d) {
+void EkltTracker::setBatchSize(EkltPatch &patch, const double &d) {
+  const cv::Mat &I_x = patch.gradient_xy_.first;
+  const cv::Mat &I_y = patch.gradient_xy_.second;
   // implements the equation (15) of the paper
   cv::Mat gradient = d * std::cos(patch.flow_angle_) * I_x + d * std::sin(patch.flow_angle_) * I_y;
   patch.batch_size_ = std::min<double>(cv::norm(gradient, cv::NORM_L1), params_.eklt_batch_size);
@@ -192,16 +193,18 @@ EkltTracker::resetPatches(Patches &new_patches, std::vector<int> &lost_indices, 
 
     // reset lost patches with new ones
     EkltPatch &reset_patch = new_patches[i];
-    patches_[index].reset(reset_patch.getCenter(), reset_patch.t_init_);
-    lost_indices.erase(lost_indices.begin() + i);
-
     // reinitialize the image gradients of new features
     const int x_min = reset_patch.getCenter().x - p;
     const int y_min = reset_patch.getCenter().y - p;
     cv::Mat p_I_x = I_x_padded.rowRange(y_min, y_min + 2 * p + 1).colRange(x_min, x_min + 2 * p + 1);
     cv::Mat p_I_y = I_y_padded.rowRange(y_min, y_min + 2 * p + 1).colRange(x_min, x_min + 2 * p + 1);
-    patch_gradients_[index] = std::make_pair(p_I_x.clone(), p_I_y.clone());
-    setBatchSize(reset_patch, patch_gradients_[index].first, patch_gradients_[index].second, params_.eklt_displacement_px);
+
+    auto grad = std::make_pair(p_I_x.clone(), p_I_y.clone());
+
+    patches_[index].reset(reset_patch.getCenter(), reset_patch.t_init_, grad);
+    setBatchSize(patches_[index], params_.eklt_displacement_px);
+
+    lost_indices.erase(lost_indices.begin() + i);
   }
 }
 
@@ -296,10 +299,9 @@ void EkltTracker::bootstrapFeatureEvents(EkltPatch &patch, const cv::Mat &event_
   // Implement a bootstrapping mechanism for computing the optical flow direction via
   // \nabla I \cdot v= - \Delta E --> v = - \nabla I ^ \dagger \Delta E (assuming no translation or rotation
   // of the feature.
-  int index = &patch - &patches_[0];
 
-  cv::Mat &I_x = patch_gradients_[index].first;
-  cv::Mat &I_y = patch_gradients_[index].second;
+  cv::Mat &I_x = patch.gradient_xy_.first;
+  cv::Mat &I_y = patch.gradient_xy_.second;
 
   double s_I_xx = cv::sum(I_x.mul(I_x))[0];
   double s_I_yy = cv::sum(I_y.mul(I_y))[0];
@@ -408,7 +410,7 @@ std::vector<MatchList> EkltTracker::processEvents(const EventArray::ConstPtr &ms
   return match_lists_for_ekf_updates;
 }
 
-void EkltTracker::processImage(double timestamp, TiledImage &current_img) {
+void EkltTracker::processImage(double timestamp, const TiledImage &current_img) {
   // tiling not implemented
   assert(current_img.getNTilesH() == 1 && current_img.getNTilesW() == 1);
   images_.insert(std::make_pair(timestamp, current_img.clone()));
