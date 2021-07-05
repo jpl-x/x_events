@@ -56,10 +56,7 @@ namespace x {
    */
     void bootstrapFeatureKLT(HastePatch &patch, const cv::Mat &last_image, const cv::Mat &current_image);
 
-    /**
-     * @brief bootstrapping features: Uses first event frame to solve for the best optical flow, given 0 translation.
-     */
-    void bootstrapFeatureEvents(HastePatch &patch, const cv::Mat &event_frame);
+    HypothesisTrackerPtr createHypothesisTracker(double t, double x, double y, double theta);
 
     /**
      * @brief add new features
@@ -82,6 +79,7 @@ namespace x {
       cv::Mat gray(out, cv::Rect(p, p, in.cols, in.rows));
       copyMakeBorder(in, out, p, p, p, p, cv::BORDER_CONSTANT);
     }
+
 
     /**
      * @brief checks if the optimization cost is above 1.6 (as described in the paper)

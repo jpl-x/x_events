@@ -12,6 +12,11 @@
 
 
 #include <easy/profiler.h>
+#include <x/haste/tracking/correlation_tracker.hpp>
+#include <x/haste/tracking/haste_correlation_tracker.hpp>
+#include <x/haste/tracking/haste_correlation_star_tracker.hpp>
+#include <x/haste/tracking/haste_difference_tracker.hpp>
+#include <x/haste/tracking/haste_difference_star_tracker.hpp>
 
 using namespace x;
 
@@ -87,21 +92,23 @@ bool HasteTracker::updatePatch(AsyncPatch &async_patch, const Event &event) {
   if (patch.lost_ ||
 //      (params_.eklt_bootstrap == "klt" && !patch.initialized_) ||
       !patch.initialized_ ||  // check how to handle this
-      !patch.contains(event.x, event.y) ||
       patch.getCurrentTime() > event.ts)
     return false;
 
-//  patch.insert(event);
+  auto update_type = patch.hypothesis_tracker_->pushEvent(event.ts, event.x, event.y);
 
-//  // start optimization if there are update_rate new events in the patch
-////  int update_rate = std::min<int>(patch.update_rate_, patch.batch_size_); // EDIT from patch.event_counter_ < update_rate
-//  if (patch.event_buffer_.size() < patch.batch_size_ || patch.event_counter_ < patch.batch_size_)
-//    return false;
+  switch (update_type) {
 
-//  // compute event frame according to equation (2) in the paper
-//  cv::Mat event_frame;
-//  auto event_accumulation_timestamp = patch.getEventFrame(event_frame);
-//
+    case haste::HypothesisPatchTracker::kOutOfRange:
+    case haste::HypothesisPatchTracker::kInitializingEvent:
+      // skip
+      return false;
+    case haste::HypothesisPatchTracker::kRegularEvent:
+    case haste::HypothesisPatchTracker::kStateEvent:
+      patch.updateCenter(patch.hypothesis_tracker_->t(), {patch.hypothesis_tracker_->x(), patch.hypothesis_tracker_->y()});
+//      patch.flow_angle_ = patch.hypothesis_tracker_->theta();
+      break;
+  }
 
   if (shouldDiscard(patch)) {
     discardPatch(patch);
@@ -161,10 +168,10 @@ void HasteTracker::resetPatches(HastePatches &new_patches, std::vector<int> &los
     // reset lost patches with new ones
     HastePatch &reset_patch = new_patches[i];
     // reinitialize the image gradients of new features
-    const int x_min = reset_patch.getCenter().x - p;
-    const int y_min = reset_patch.getCenter().y - p;
-    cv::Mat p_I_x = I_x_padded.rowRange(y_min, y_min + 2 * p + 1).colRange(x_min, x_min + 2 * p + 1);
-    cv::Mat p_I_y = I_y_padded.rowRange(y_min, y_min + 2 * p + 1).colRange(x_min, x_min + 2 * p + 1);
+//    const int x_min = reset_patch.getCenter().x - p;
+//    const int y_min = reset_patch.getCenter().y - p;
+//    cv::Mat p_I_x = I_x_padded.rowRange(y_min, y_min + 2 * p + 1).colRange(x_min, x_min + 2 * p + 1);
+//    cv::Mat p_I_y = I_y_padded.rowRange(y_min, y_min + 2 * p + 1).colRange(x_min, x_min + 2 * p + 1);
 
 //    auto grad = std::make_pair(p_I_x.clone(), p_I_y.clone());
 
@@ -203,32 +210,28 @@ void HasteTracker::bootstrapFeatureKLT(HastePatch &patch, const cv::Mat &last_im
     patch.lost_ = true;
     lost_indices_.push_back(&patch - &patches_[0]);
   } else {
+    patch.hypothesis_tracker_ = createHypothesisTracker(current_image_it_->first, next_points[0].x, next_points[0].y, opt_flow_angle);
     patch.initialized_ = true;
   }
 }
 
-void HasteTracker::bootstrapFeatureEvents(HastePatch &patch, const cv::Mat &event_frame) {
-  // Implement a bootstrapping mechanism for computing the optical flow direction via
-  // \nabla I \cdot v= - \Delta E --> v = - \nabla I ^ \dagger \Delta E (assuming no translation or rotation
-  // of the feature.
 
-//  cv::Mat &I_x = patch.gradient_xy_.first;
-//  cv::Mat &I_y = patch.gradient_xy_.second;
-//
-//  double s_I_xx = cv::sum(I_x.mul(I_x))[0];
-//  double s_I_yy = cv::sum(I_y.mul(I_y))[0];
-//  double s_I_xy = cv::sum(I_x.mul(I_y))[0];
-//  double s_I_xt = cv::sum(I_x.mul(event_frame))[0];
-//  double s_I_yt = cv::sum(I_y.mul(event_frame))[0];
-//
-//  cv::Mat M = (cv::Mat_<double>(2, 2) << s_I_xx, s_I_xy, s_I_xy, s_I_yy);
-//  cv::Mat b = (cv::Mat_<double>(2, 1) << s_I_xt, s_I_yt);
-//
-//  cv::Mat v = -M.inv() * b;
-//
-//  patch.flow_angle_ = std::atan2(v.at<double>(0, 0), v.at<double>(1, 0));
-//  patch.initialized_ = true;
+HypothesisTrackerPtr HasteTracker::createHypothesisTracker(double t, double x, double y, double theta) {
+  switch (params_.haste_tracker_type) {
+    case HasteTrackerType::CORRELATION:
+      return std::make_shared<haste::CorrelationTracker>(t, x, y, theta);
+    case HasteTrackerType::HASTE_CORRELATION:
+      return std::make_shared<haste::HasteCorrelationTracker>(t, x, y, theta);
+    case HasteTrackerType::HASTE_CORRELATION_STAR:
+      return std::make_shared<haste::HasteCorrelationStarTracker>(t, x, y, theta);
+    case HasteTrackerType::HASTE_DIFFERENCE:
+      return std::make_shared<haste::HasteDifferenceTracker>(t, x, y, theta);
+    case HasteTrackerType::HASTE_DIFFERENCE_STAR:
+    default:
+      return std::make_shared<haste::HasteDifferenceStarTracker>(t, x, y, theta);
+  }
 }
+
 
 void HasteTracker::onNewImageReceived() {
   // bootstrap patches that need to be due to new image

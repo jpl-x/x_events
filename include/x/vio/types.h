@@ -63,6 +63,14 @@ namespace x
     RADIAL_TANGENTIAL,
   };
 
+  enum class HasteTrackerType : char {
+    CORRELATION,
+    HASTE_CORRELATION,
+    HASTE_CORRELATION_STAR,
+    HASTE_DIFFERENCE,
+    HASTE_DIFFERENCE_STAR,
+  };
+
   enum class EkltEkfFeatureInterpolation : char {
     NO_INTERPOLATION, // always take last
     NEAREST_NEIGHBOR, // take one of both
@@ -301,6 +309,13 @@ namespace x
     EkltEkfUpdateTimestamp eklt_ekf_update_timestamp = EkltEkfUpdateTimestamp::PATCH_AVERAGE;
     EkltPatchTimestampAssignment eklt_patch_timestamp_assignment = EkltPatchTimestampAssignment::LATEST_EVENT;
     bool eklt_use_linlog_scale = false; // whether to use piecewise lin-log scale instead of log(img+log_eps)
+
+
+    /**
+     * HASTE frontend parameters
+     */
+
+    HasteTrackerType haste_tracker_type = HasteTrackerType::HASTE_DIFFERENCE_STAR;
   };
 
   /**

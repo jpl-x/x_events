@@ -8,6 +8,9 @@
 
 #include <x/eklt/async_patch.h>
 
+#include <utility>
+#include <x/haste/types.h>
+
 
 namespace x {
 
@@ -17,9 +20,9 @@ namespace x {
  */
   struct HastePatch : public AsyncPatch {
 
-    HastePatch(const cv::Point2d &center, double t_init, const x::Params &params, const EventsPerformanceLoggerPtr& perf_logger)
+    HastePatch(cv::Point2d center, double t_init, const x::Params &params, const EventsPerformanceLoggerPtr& perf_logger)
       : AsyncPatch(perf_logger)
-      , init_center_(center)
+      , init_center_(std::move(center))
       , t_init_(t_init)
       , lost_(false)
       , initialized_(false) {
@@ -35,21 +38,6 @@ namespace x {
       lost_ = true;
     }
 
-    /**
-     * @brief contains checks if event is contained in square around the current feature position
-     */
-    inline bool contains(double x, double y) const {
-      return half_size_ >= std::abs(x - getCenter().x) && half_size_ >= std::abs(y - getCenter().y);
-    }
-
-    /**
-     * @brief checks if 2x2 ((x,y) to (x+1,y+1)) update is within patch boundaries
-     */
-    inline bool contains_patch_update(int x, int y) const {
-      return (((x + 1) < patch_size_) && (x >= 0) &&
-              ((y + 1) < patch_size_) && (y >= 0));
-    }
-
     inline void updateCenter(double t, const cv::Point2d& new_center) {
 //      warpPixel(init_center_, new_center);
       updateTrack(t, new_center);
@@ -62,6 +50,7 @@ namespace x {
       // reset feature after it has been lost
       lost_ = false;
       initialized_ = false;
+      hypothesis_tracker_.reset();
 
       resetTrack(t, init_center);
 
@@ -80,6 +69,12 @@ namespace x {
 
     bool lost_;
     bool initialized_;
+
+    /**
+     * Nomenclature of HASTE is not compatible with the one we use in X. A tracker indeed tracks just a single patch in
+     * HASTE --> our HastePatch therefore owns one hypothesis_tracker.
+     */
+    x::HypothesisTrackerPtr hypothesis_tracker_;
   };
 
 }
