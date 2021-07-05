@@ -43,10 +43,6 @@ namespace x {
       return ret;
     }
 
-    TiledImage getCurrentImage() {
-      return current_image_it_->second;
-    }
-
     void renderVisualization(TiledImage &tracker_debug_image_output);
 
     /**
@@ -73,7 +69,7 @@ bool updatePatch(AsyncPatch &patch, const Event &event) override;
     /**
      * @brief checks all features if they can be bootstrapped
      */
-    void bootstrapAllPossiblePatches(Patches &patches, const ImageBuffer::iterator &image_it);
+    void bootstrapAllPossiblePatches(EkltPatches &patches, const ImageBuffer::iterator &image_it);
 
     /**
    * @brief bootstrapping features: Uses first two frames to initialize feature translation and optical flow.
@@ -93,12 +89,12 @@ bool updatePatch(AsyncPatch &patch, const Event &event) override;
     /**
      * @brief reset patches that have been lost.
      */
-    void resetPatches(Patches &new_patches, std::vector<int> &lost_indices, const ImageBuffer::iterator &image_it);
+    void resetPatches(EkltPatches &new_patches, std::vector<int> &lost_indices, const ImageBuffer::iterator &image_it);
 
     /**
      * @brief initialize corners on an image
      */
-    void initPatches(Patches &patches, std::vector<int> &lost_indices, const int &corners,
+    void initPatches(EkltPatches &patches, std::vector<int> &lost_indices, const int &corners,
                      const ImageBuffer::iterator &image_it);
 
     inline void padBorders(const cv::Mat &in, cv::Mat &out, int p) {
@@ -127,7 +123,7 @@ bool updatePatch(AsyncPatch &patch, const Event &event) override;
     void setBatchSize(EkltPatch &patch, const double &d);
 
     // patch parameters
-    Patches patches_;
+    EkltPatches patches_;
     std::vector<int> lost_indices_;
 
     // delegation

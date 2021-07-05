@@ -2,6 +2,7 @@
 // Created by Florian Mahlknecht on 2021-07-05.
 // Copyright (c) 2021 NASA / JPL. All rights reserved.
 
+#pragma once
 
 #include <x/eklt/async_patch.h>
 #include <vector>
@@ -10,7 +11,6 @@
 #include <x/vision/camera.h>
 #include <x/eklt/async_feature_interpolator.h>
 
-#pragma once
 
 namespace x {
 
@@ -53,6 +53,10 @@ namespace x {
     void processImage(double timestamp, const TiledImage &current_img);
 
     void extractFeatures(std::vector<cv::Point2d> &features, int num_patches, const ImageBuffer::iterator &image_it);
+
+    TiledImage getCurrentImage() {
+      return current_image_it_->second;
+    }
 
   protected:
     // pointers to most recent image and time

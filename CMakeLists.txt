@@ -156,6 +156,7 @@ set (SOURCE
   src/x/events/e_vio.cpp
   src/x/events/event_accumulator.cpp
   src/x/eklt/async_feature_tracker.cpp
+  src/x/haste/haste_tracker.cpp
 )
 
 add_library (x ${SOURCE})

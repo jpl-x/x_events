@@ -20,7 +20,7 @@ EkltTracker::EkltTracker(Camera camera, Viewer &viewer, Params params, EventsPer
   , viewer_ptr_(&viewer)  {
 }
 
-void EkltTracker::initPatches(Patches &patches, std::vector<int> &lost_indices, const int &corners,
+void EkltTracker::initPatches(EkltPatches &patches, std::vector<int> &lost_indices, const int &corners,
                               const ImageBuffer::iterator &image_it) {
 
   std::vector<cv::Point2d> features;
@@ -141,7 +141,7 @@ void EkltTracker::addFeatures(std::vector<int> &lost_indices, const ImageBuffer:
   extractFeatures(features, lost_indices.size(), image_it);
 
   if (!features.empty()) {
-    Patches patches;
+    EkltPatches patches;
 
     for (const auto & feature : features) {
       patches.emplace_back(feature, image_it->first, params_, event_perf_logger_);
@@ -159,7 +159,7 @@ void EkltTracker::addFeatures(std::vector<int> &lost_indices, const ImageBuffer:
   }
 }
 
-void EkltTracker::bootstrapAllPossiblePatches(Patches &patches, const ImageBuffer::iterator &image_it) {
+void EkltTracker::bootstrapAllPossiblePatches(EkltPatches &patches, const ImageBuffer::iterator &image_it) {
   for (size_t i = 0; i < patches.size(); ++i) {
     EkltPatch &patch = patches[i];
 
@@ -184,7 +184,7 @@ void EkltTracker::setBatchSize(EkltPatch &patch, const double &d) {
 }
 
 void
-EkltTracker::resetPatches(Patches &new_patches, std::vector<int> &lost_indices, const ImageBuffer::iterator &image_it) {
+EkltTracker::resetPatches(EkltPatches &new_patches, std::vector<int> &lost_indices, const ImageBuffer::iterator &image_it) {
   const int &p = (params_.eklt_patch_size - 1) / 2;
   cv::Mat I_x, I_y, I_x_padded, I_y_padded;
 

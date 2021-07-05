@@ -65,12 +65,14 @@ namespace x {
   typedef std::shared_ptr<EkltPerformanceLogger> EkltPerformanceLoggerPtr;
 
   struct EkltPatch; //forward decl
-  using Patches = std::vector<EkltPatch>; //forward decl
+  using EkltPatches = std::vector<EkltPatch>; //forward decl
+  struct HastePatch; //forward decl
+  using HastePatches = std::vector<HastePatch>; //forward decl
 
   using ImageBuffer = std::map<double, TiledImage>;
 
   struct FeatureTrackData {
-    Patches patches;
+    EkltPatches patches;
     double t, t_init;
     cv::Mat image;
   };
