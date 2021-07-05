@@ -1,14 +1,11 @@
 #include <thread>
 
 #include <opencv2/core/core.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/video/tracking.hpp>
-#include <iomanip>
 #include <utility>
 
 #include <x/eklt/eklt_tracker.h>
 
-#include <cassert>
 #include <easy/profiler.h>
 #include <x/vision/camera.h>
 #include <x/vision/utils.h>
@@ -16,32 +13,31 @@
 
 using namespace x;
 
-EkltTracker::EkltTracker(Camera camera, Viewer &viewer, Params params, EkltPerformanceLoggerPtr p_logger)
-  : params_(std::move(params)), perf_logger_(std::move(p_logger))
-  , got_first_image_(false), most_current_time_(-1.0)
-  , viewer_ptr_(&viewer), optimizer_(params_, perf_logger_)
-  , interpolator_(params, std::move(camera)) {
-}
-
-void EkltTracker::setParams(const Params &params) {
-  params_ = params;
-  viewer_ptr_->setParams(params);
-  optimizer_.setParams(params);
-  interpolator_.setParams(params);
-
-  if (params_.eklt_ekf_update_strategy == EkltEkfUpdateStrategy::EVERY_N_EVENTS) {
-    events_till_next_ekf_update_ = params_.eklt_ekf_update_every_n;
-  }
+EkltTracker::EkltTracker(Camera camera, Viewer &viewer, Params params, EventsPerformanceLoggerPtr event_perf_logger, EkltPerformanceLoggerPtr p_logger)
+  : AsyncFeatureTracker(std::move(camera), std::move(params), std::move(event_perf_logger))
+  , eklt_perf_logger_(std::move(p_logger))
+  , optimizer_(params_, eklt_perf_logger_)
+  , viewer_ptr_(&viewer)  {
 }
 
 void EkltTracker::initPatches(Patches &patches, std::vector<int> &lost_indices, const int &corners,
                               const ImageBuffer::iterator &image_it) {
+
+  std::vector<cv::Point2d> features;
   // extract Harris corners
-  extractPatches(patches, corners, image_it);
+  extractFeatures(features, corners, image_it);
+
+  for (const auto & feature : features) {
+    patches.emplace_back(feature, image_it->first, params_, event_perf_logger_);
+    EkltPatch &patch = patches[patches.size() - 1];
+    if (eklt_perf_logger_)
+      eklt_perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.getId(), EkltTrackUpdateType::Init,
+                                                patch.getCurrentTime(), patch.getCenter().x, patch.getCenter().y, patch.flow_angle_);
+  }
 
   // fill up patches to full capacity and set all of the filled patches to lost
   for (int i = patches.size(); i < corners; i++) {
-    patches.emplace_back(params_);
+    patches.emplace_back(params_, event_perf_logger_);
     lost_indices.push_back(i);
   }
 
@@ -73,7 +69,7 @@ void EkltTracker::initPatches(Patches &patches, std::vector<int> &lost_indices, 
   }
 }
 
-void EkltTracker::init(const ImageBuffer::iterator &image_it) {
+void EkltTracker::onInit(const ImageBuffer::iterator &image_it) {
   // extracts corners and extracts patches around them.
   initPatches(patches_, lost_indices_, params_.eklt_max_corners, image_it);
 
@@ -124,9 +120,9 @@ bool EkltTracker::updatePatch(AsyncPatch &async_patch, const Event &event) {
       break;
   }
 
-  if (perf_logger_)
-    perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.getId(), EkltTrackUpdateType::Update,
-                                         patch.getCurrentTime(), patch.getCenter().x, patch.getCenter().y, patch.flow_angle_);
+  if (eklt_perf_logger_)
+    eklt_perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.getId(), EkltTrackUpdateType::Update,
+                                              patch.getCurrentTime(), patch.getCenter().x, patch.getCenter().y, patch.flow_angle_);
 
   setBatchSize(patch, params_.eklt_displacement_px);
 
@@ -140,10 +136,21 @@ bool EkltTracker::updatePatch(AsyncPatch &async_patch, const Event &event) {
 
 void EkltTracker::addFeatures(std::vector<int> &lost_indices, const ImageBuffer::iterator &image_it) {
   // find new patches to replace them lost features
-  Patches patches;
-  extractPatches(patches, lost_indices.size(), image_it);
+  std::vector<cv::Point2d> features;
 
-  if (!patches.empty()) {
+  extractFeatures(features, lost_indices.size(), image_it);
+
+  if (!features.empty()) {
+    Patches patches;
+
+    for (const auto & feature : features) {
+      patches.emplace_back(feature, image_it->first, params_, event_perf_logger_);
+      EkltPatch &patch = patches[patches.size() - 1];
+      if (eklt_perf_logger_)
+        eklt_perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.getId(), EkltTrackUpdateType::Init,
+                                                  patch.getCurrentTime(), patch.getCenter().x, patch.getCenter().y, patch.flow_angle_);
+    }
+
     // pass the new image to the optimizer to use for future optimizations
     optimizer_.precomputeLogImageArray(patches, image_it);
 
@@ -208,58 +215,6 @@ EkltTracker::resetPatches(Patches &new_patches, std::vector<int> &lost_indices, 
   }
 }
 
-void EkltTracker::extractPatches(Patches &patches, const int &num_patches, const ImageBuffer::iterator &image_it) {
-  std::vector<cv::Point2d> features;
-
-  // mask areas which are within a distance min_distance of other features or along the border.
-  int hp = (params_.eklt_patch_size - 1) / 2;
-
-  int h = params_.img_height;
-  int w = params_.img_width;
-  cv::Mat mask = cv::Mat::ones(h, w, CV_8UC1);
-  mask.rowRange(0, hp).colRange(0, w - 1).setTo(0);
-  mask.rowRange(h - hp, h - 1).colRange(0, w - 1).setTo(0);
-  mask.rowRange(0, h - 1).colRange(0, hp).setTo(0);
-  mask.rowRange(0, h - 1).colRange(w - hp, w - 1).setTo(0);
-
-  const int &min_distance = params_.eklt_min_distance;
-  for (EkltPatch &patch: patches_) {
-    if (patch.lost_) continue;
-
-    double min_x = std::fmax(patch.getCenter().x - min_distance, 0);
-    double max_x = std::fmin(patch.getCenter().x + min_distance, w - 1);
-    double min_y = std::fmax(patch.getCenter().y - min_distance, 0);
-    double max_y = std::fmin(patch.getCenter().y + min_distance, h - 1);
-    mask.rowRange(min_y, max_y).colRange(min_x, max_x).setTo(0);
-  }
-
-  // extract harris corners which are suitable
-  // since they correspond to strong edges which also generate alot of events.
-  VLOG(2) << "Harris corner detector with N=" << num_patches << " quality=" << params_.eklt_quality_level
-          << " min_dist=" << params_.eklt_min_distance << " block_size=" << params_.eklt_block_size << " k=" << params_.eklt_k
-          << " image_depth=" << image_it->second.depth() << " mask_ratio="
-          << cv::sum(mask)[0] / (mask.cols * mask.rows);
-
-  cv::goodFeaturesToTrack(image_it->second, features, num_patches,
-                          params_.eklt_quality_level,
-                          params_.eklt_min_distance, mask,
-                          params_.eklt_block_size,
-                          true,
-                          params_.eklt_k);
-
-  // initialize patches centered at the features with an initial pixel warp
-  VLOG(1)
-  << "Extracted " << features.size() << " new features on image at t=" << std::setprecision(15) << image_it->first
-  << " s.";
-  for (const auto & feature : features) {
-    patches.emplace_back(feature, image_it->first, params_);
-    EkltPatch &patch = patches[patches.size() - 1];
-    if (perf_logger_)
-      perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.getId(), EkltTrackUpdateType::Init,
-                                           patch.getCurrentTime(), patch.getCenter().x, patch.getCenter().y, patch.flow_angle_);
-  }
-}
-
 void EkltTracker::bootstrapFeatureKLT(EkltPatch &patch, const cv::Mat &last_image, const cv::Mat &current_image) {
   // bootstrap feature by initializing its warp and optical flow with KLT on successive images
   std::vector<cv::Point2f> points = {patch.init_center_};
@@ -289,9 +244,9 @@ void EkltTracker::bootstrapFeatureKLT(EkltPatch &patch, const cv::Mat &last_imag
     lost_indices_.push_back(&patch - &patches_[0]);
   } else {
     patch.initialized_ = true;
-    if (perf_logger_)
-      perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.getId(), EkltTrackUpdateType::Bootstrap,
-                                           patch.getCurrentTime(), patch.getCenter().x, patch.getCenter().y, patch.flow_angle_);
+    if (eklt_perf_logger_)
+      eklt_perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.getId(), EkltTrackUpdateType::Bootstrap,
+                                                patch.getCurrentTime(), patch.getCenter().x, patch.getCenter().y, patch.flow_angle_);
   }
 }
 
@@ -318,110 +273,19 @@ void EkltTracker::bootstrapFeatureEvents(EkltPatch &patch, const cv::Mat &event_
   patch.initialized_ = true;
 }
 
-class EventPerfHelper {
-public:
-  explicit EventPerfHelper(const EkltPerformanceLoggerPtr& ptr) {
-    if (ptr) {
-      perf_logger_ = ptr;
-      t_start_ = profiler::now();
-    }
-  }
-
-  ~EventPerfHelper() {
-    if (perf_logger_) {
-      perf_logger_->events_csv.addRow(t_start_, profiler::now());
-    }
-  }
-
-  EkltPerformanceLoggerPtr perf_logger_;
-  profiler::timestamp_t t_start_;
-};
-
-std::vector<MatchList> EkltTracker::processEvents(const EventArray::ConstPtr &msg) {
-  std::vector<MatchList> match_lists_for_ekf_updates;
-
-  if (!got_first_image_) {
-    LOG_EVERY_N(INFO, 20) << "Events dropped since no image present.";
-    return match_lists_for_ekf_updates;
-  }
-
-  bool did_some_patch_change = false;
-  for (const auto &ev : msg->events) {
-    EASY_EVENT("Single Event");
-    EventPerfHelper helper(perf_logger_);
-    // keep track of the most current time with latest time stamp from event
-    if (ev.ts >= most_current_time_)
-      most_current_time_ = ev.ts;
-    else if (fabs(ev.ts - most_current_time_) > 1e-6)  // if order wrong and spaced more than 1us
-      LOG(WARNING) << "Processing event behind most current time: " << std::setprecision(15) << ev.ts << " < " << most_current_time_ << ". Events might not be in order!";
-
-    // go through each patch and update the event frame with the new event
-    for (AsyncPatch* patch: getActivePatches()) {
-      did_some_patch_change |= updatePatch(*patch, ev);
-    }
-
-    if (updateFirstImageBeforeTime(most_current_time_, current_image_it_)) // enter if new image found
-    {
-      // bootstrap patches that need to be due to new image
-      if (params_.eklt_bootstrap == "klt")
-        bootstrapAllPossiblePatches(patches_, current_image_it_);
-
-      // replenish features if there are too few
-      if (lost_indices_.size() > static_cast<size_t>(params_.eklt_max_corners - params_.eklt_min_corners))
-        addFeatures(lost_indices_, current_image_it_);
-
-      // erase old image
-      auto image_it = current_image_it_;
-      image_it--;
-      images_.erase(image_it);
-    }
-
-    switch (params_.eklt_ekf_update_strategy) {
-      case EkltEkfUpdateStrategy::EVERY_ROS_EVENT_MESSAGE:
-        // nothing to do here
-        break;
-      case EkltEkfUpdateStrategy::EVERY_N_EVENTS:
-        if (--events_till_next_ekf_update_ <= 0) {
-          if (did_some_patch_change) {
-            events_till_next_ekf_update_ = params_.eklt_ekf_update_every_n;
-            did_some_patch_change = false;
-            match_lists_for_ekf_updates.push_back(interpolator_.getMatchListFromPatches(getActivePatches()));
-          } else {
-            events_till_next_ekf_update_ = 1; // try on next event again
-          }
-        }
-        break;
-      case EkltEkfUpdateStrategy::EVERY_N_MSEC_WITH_EVENTS:
-        if (ev.ts - last_ekf_update_timestamp_ >= params_.eklt_ekf_update_every_n * 1e-3 && did_some_patch_change) {
-          did_some_patch_change = false;
-          last_ekf_update_timestamp_ = ev.ts;
-          match_lists_for_ekf_updates.push_back(interpolator_.getMatchListFromPatches(getActivePatches()));
-        }
-        break;
-    }
-
-    if (params_.eklt_display_features && ++viewer_counter_ % params_.eklt_update_every_n_events == 0)
-      viewer_ptr_->setViewData(patches_, most_current_time_, current_image_it_);
-  }
-
-  if (did_some_patch_change && params_.eklt_ekf_update_strategy == EkltEkfUpdateStrategy::EVERY_ROS_EVENT_MESSAGE) {
-    match_lists_for_ekf_updates.push_back(interpolator_.getMatchListFromPatches(getActivePatches()));
-  }
-  return match_lists_for_ekf_updates;
+void EkltTracker::onPostEvent() {
+  if (params_.eklt_display_features && ++viewer_counter_ % params_.eklt_update_every_n_events == 0)
+    viewer_ptr_->setViewData(patches_, most_current_time_, current_image_it_);
 }
 
-void EkltTracker::processImage(double timestamp, const TiledImage &current_img) {
-  // tiling not implemented
-  assert(current_img.getNTilesH() == 1 && current_img.getNTilesW() == 1);
-  images_.insert(std::make_pair(timestamp, current_img.clone()));
+void EkltTracker::onNewImageReceived() {
+  // bootstrap patches that need to be due to new image
+  if (params_.eklt_bootstrap == "klt")
+    bootstrapAllPossiblePatches(patches_, current_image_it_);
 
-  if (!got_first_image_) {
-    VLOG(1) << "Found first image.";
-    current_image_it_ = images_.begin();
-    most_current_time_ = current_image_it_->first;
-    init(current_image_it_);
-    got_first_image_ = true;
-  }
+  // replenish features if there are too few
+  if (lost_indices_.size() > static_cast<size_t>(params_.eklt_max_corners - params_.eklt_min_corners))
+    addFeatures(lost_indices_, current_image_it_);
 }
 
 
@@ -430,7 +294,3 @@ void EkltTracker::renderVisualization(TiledImage &tracker_debug_image_output) {
   tracker_debug_image_output = viewer_ptr_->getFeatureTrackViewImage();
 }
 
-void EkltTracker::setPerfLogger(const EkltPerformanceLoggerPtr &perf_logger) {
-  perf_logger_ = perf_logger;
-  optimizer_.setPerfLogger(perf_logger);
-}

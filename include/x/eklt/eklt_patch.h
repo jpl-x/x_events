@@ -31,8 +31,8 @@ namespace x {
      * @param half_size half size of the patch side length
      * @param t_init time stamp of the image where the corner was extracted
      */
-    EkltPatch(const cv::Point2d &center, double t_init, const x::Params &params)
-      : AsyncPatch()
+    EkltPatch(const cv::Point2d &center, double t_init, const x::Params &params, const EventsPerformanceLoggerPtr& perf_logger)
+      : AsyncPatch(perf_logger)
       , init_center_(center)
       , flow_angle_(0)
       , event_counter_(0)
@@ -54,7 +54,7 @@ namespace x {
     }
 
     // TODO find alternative to ros::Time::now().toSec() -- now -1
-    explicit EkltPatch(const x::Params &params) : EkltPatch(cv::Point2f(-1, -1), -1, params) {
+    explicit EkltPatch(const x::Params &params, const EventsPerformanceLoggerPtr& perf_logger) : EkltPatch(cv::Point2f(-1, -1), -1, params, perf_logger) {
       // contstructor for initializing lost features
       lost_ = true;
     }

@@ -25,6 +25,7 @@ namespace x {
   class EKLTVIO : public AbstractVio {
   public:
     explicit EKLTVIO(XVioPerformanceLoggerPtr  xvio_perf_logger = nullptr,
+                     EventsPerformanceLoggerPtr events_perf_logger = nullptr,
                      EkltPerformanceLoggerPtr  eklt_perf_logger = nullptr);
 
     bool isInitialized() const;
@@ -125,7 +126,6 @@ namespace x {
 
     // optional performance loggers
     XVioPerformanceLoggerPtr xvio_perf_logger_;
-    EkltPerformanceLoggerPtr eklt_perf_logger_;
   };
 } // namespace x
 

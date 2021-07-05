@@ -25,13 +25,12 @@ namespace boost {
 }
 
 
-EKLTVIO::EKLTVIO(XVioPerformanceLoggerPtr xvio_perf_logger, EkltPerformanceLoggerPtr eklt_perf_logger)
+EKLTVIO::EKLTVIO(XVioPerformanceLoggerPtr xvio_perf_logger, EventsPerformanceLoggerPtr events_perf_logger,  EkltPerformanceLoggerPtr eklt_perf_logger)
   : ekf_{Ekf(vio_updater_)}
   , msckf_baseline_n_(-1.0)
   , eklt_viewer_()
-  , eklt_tracker_(x::Camera(), eklt_viewer_)
-  , xvio_perf_logger_(std::move(xvio_perf_logger))
-  , eklt_perf_logger_(std::move(eklt_perf_logger)) {
+  , eklt_tracker_(x::Camera(), eklt_viewer_, x::Params(), std::move(events_perf_logger), std::move(eklt_perf_logger))
+  , xvio_perf_logger_(std::move(xvio_perf_logger)) {
 }
 
 bool EKLTVIO::isInitialized() const {
@@ -57,7 +56,6 @@ void EKLTVIO::setUp(const x::Params &params) {
 
   // sets also EKLT params in viewer and optimizer class
   eklt_tracker_.setParams(params);
-  eklt_tracker_.setPerfLogger(eklt_perf_logger_);
   eklt_tracker_.setCamera(camera_);
 
   // Set up EKLTVIO state manager

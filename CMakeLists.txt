@@ -155,6 +155,7 @@ set (SOURCE
   src/x/eklt/types.cpp
   src/x/events/e_vio.cpp
   src/x/events/event_accumulator.cpp
+  src/x/eklt/async_feature_tracker.cpp
 )
 
 add_library (x ${SOURCE})
