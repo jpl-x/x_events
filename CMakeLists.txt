@@ -74,6 +74,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 find_package(Eigen3 REQUIRED)
+message("Eigen version: ${Eigen3_VERSION}")
 find_package(easy_profiler_catkin REQUIRED)
 
 
@@ -106,7 +107,7 @@ set(EIGEN3_LIBRARIES ${EIGEN3_LIBRARIES})
 
 # Configure this package
 catkin_package(
-	DEPENDS EIGEN3
+  DEPENDS EIGEN3
   INCLUDE_DIRS include ${EIGEN3_INCLUDE_DIR} ${ceres_catkin_INCLUDE_DIRS} ${glog_catkin_INCLUDE_DIRS}
   LIBRARIES x
 )
@@ -157,6 +158,7 @@ set (SOURCE
   src/x/events/event_accumulator.cpp
   src/x/eklt/async_feature_tracker.cpp
   src/x/haste/haste_tracker.cpp
+  src/x/haste/tracking/tracking.cpp
 )
 
 add_library (x ${SOURCE})
