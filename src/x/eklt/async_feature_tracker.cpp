@@ -16,36 +16,29 @@
 using namespace x;
 
 
-x::AsyncFeatureTracker::AsyncFeatureTracker(Camera camera, Params params, EventsPerformanceLoggerPtr event_perf_logger)
+x::AsyncFeatureTracker::AsyncFeatureTracker(Camera camera, AsyncFrontendParams async_frontend_params, EventsPerformanceLoggerPtr event_perf_logger)
   : got_first_image_(false)
-  , interpolator_(params, std::move(camera))
+  , interpolator_(async_frontend_params, std::move(camera))
   , most_current_time_(-1.0)
-  , params_(std::move(params))
+  , params_(async_frontend_params)
   , event_perf_logger_(std::move(event_perf_logger)) {
 }
 
-void x::AsyncFeatureTracker::setParams(const Params &params) {
-  params_ = params;
-  interpolator_.setParams(params);
-
-  if (params_.eklt_ekf_update_strategy == EkltEkfUpdateStrategy::EVERY_N_EVENTS) {
-    events_till_next_ekf_update_ = params_.eklt_ekf_update_every_n;
-  }
-}
-
-void x::AsyncFeatureTracker::extractFeatures(std::vector<cv::Point2d> &features, int num_patches, const ImageBuffer::iterator &image_it) {
+void x::AsyncFeatureTracker::extractFeatures(std::vector<cv::Point2d> &features, int num_patches,
+                                             const ImageBuffer::iterator &image_it, int patch_size) {
   // mask areas which are within a distance min_distance of other features or along the border.
-  int hp = (params_.eklt_patch_size - 1) / 2;
+  int hp = (patch_size - 1) / 2;
 
-  int h = params_.img_height;
-  int w = params_.img_width;
+
+  int h = image_it->second.rows;  // params_.img_height;
+  int w = image_it->second.cols;  // params_.img_width;
   cv::Mat mask = cv::Mat::ones(h, w, CV_8UC1);
   mask.rowRange(0, hp).colRange(0, w - 1).setTo(0);
   mask.rowRange(h - hp, h - 1).colRange(0, w - 1).setTo(0);
   mask.rowRange(0, h - 1).colRange(0, hp).setTo(0);
   mask.rowRange(0, h - 1).colRange(w - hp, w - 1).setTo(0);
 
-  const int &min_distance = params_.eklt_min_distance;
+  const int &min_distance = params_.detection_min_distance;
   for (AsyncPatch* patch: getActivePatches()) {
     double min_x = std::fmax(patch->getCenter().x - min_distance, 0);
     double max_x = std::fmin(patch->getCenter().x + min_distance, w - 1);
@@ -56,17 +49,17 @@ void x::AsyncFeatureTracker::extractFeatures(std::vector<cv::Point2d> &features,
 
   // extract harris corners which are suitable
   // since they correspond to strong edges which also generate alot of events.
-  VLOG(2) << "Harris corner detector with N=" << num_patches << " quality=" << params_.eklt_quality_level
-          << " min_dist=" << params_.eklt_min_distance << " block_size=" << params_.eklt_block_size << " k=" << params_.eklt_k
+  VLOG(2) << "Harris corner detector with N=" << num_patches << " quality=" << params_.detection_harris_quality_level
+          << " min_dist=" << params_.detection_min_distance << " block_size=" << params_.detection_harris_block_size << " k=" << params_.detection_harris_k
           << " image_depth=" << image_it->second.depth() << " mask_ratio="
           << cv::sum(mask)[0] / (mask.cols * mask.rows);
 
   cv::goodFeaturesToTrack(image_it->second, features, num_patches,
-                          params_.eklt_quality_level,
-                          params_.eklt_min_distance, mask,
-                          params_.eklt_block_size,
+                          params_.detection_harris_quality_level,
+                          params_.detection_min_distance, mask,
+                          params_.detection_harris_block_size,
                           true,
-                          params_.eklt_k);
+                          params_.detection_harris_k);
 
   // initialize patches centered at the features with an initial pixel warp
   VLOG(1)
@@ -127,14 +120,14 @@ std::vector<x::MatchList> x::AsyncFeatureTracker::processEvents(const EventArray
       images_.erase(image_it);
     }
 
-    switch (params_.eklt_ekf_update_strategy) {
-      case EkltEkfUpdateStrategy::EVERY_ROS_EVENT_MESSAGE:
+    switch (params_.ekf_update_strategy) {
+      case AsyncFrontendUpdateStrategy::EVERY_ROS_EVENT_MESSAGE:
         // nothing to do here
         break;
-      case EkltEkfUpdateStrategy::EVERY_N_EVENTS:
+      case AsyncFrontendUpdateStrategy::EVERY_N_EVENTS:
         if (--events_till_next_ekf_update_ <= 0) {
           if (did_some_patch_change) {
-            events_till_next_ekf_update_ = params_.eklt_ekf_update_every_n;
+            events_till_next_ekf_update_ = params_.ekf_update_every_n;
             did_some_patch_change = false;
             match_lists_for_ekf_updates.push_back(interpolator_.getMatchListFromPatches(getActivePatches()));
           } else {
@@ -142,8 +135,8 @@ std::vector<x::MatchList> x::AsyncFeatureTracker::processEvents(const EventArray
           }
         }
         break;
-      case EkltEkfUpdateStrategy::EVERY_N_MSEC_WITH_EVENTS:
-        if (ev.ts - last_ekf_update_timestamp_ >= params_.eklt_ekf_update_every_n * 1e-3 && did_some_patch_change) {
+      case AsyncFrontendUpdateStrategy::EVERY_N_MSEC_WITH_EVENTS:
+        if (ev.ts - last_ekf_update_timestamp_ >= params_.ekf_update_every_n * 1e-3 && did_some_patch_change) {
           did_some_patch_change = false;
           last_ekf_update_timestamp_ = ev.ts;
           match_lists_for_ekf_updates.push_back(interpolator_.getMatchListFromPatches(getActivePatches()));
@@ -154,7 +147,7 @@ std::vector<x::MatchList> x::AsyncFeatureTracker::processEvents(const EventArray
     onPostEvent();
   }
 
-  if (did_some_patch_change && params_.eklt_ekf_update_strategy == EkltEkfUpdateStrategy::EVERY_ROS_EVENT_MESSAGE) {
+  if (did_some_patch_change && params_.ekf_update_strategy == AsyncFrontendUpdateStrategy::EVERY_ROS_EVENT_MESSAGE) {
     match_lists_for_ekf_updates.push_back(interpolator_.getMatchListFromPatches(getActivePatches()));
   }
   return match_lists_for_ekf_updates;
@@ -171,5 +164,12 @@ void x::AsyncFeatureTracker::processImage(double timestamp, const TiledImage &cu
     most_current_time_ = current_image_it_->first;
     onInit(current_image_it_);
     got_first_image_ = true;
+  }
+}
+
+void AsyncFeatureTracker::setAsyncFrontendParams(const AsyncFrontendParams &async_frontend_params) {
+  params_ = async_frontend_params;
+  if (params_.ekf_update_strategy == AsyncFrontendUpdateStrategy::EVERY_N_EVENTS) {
+    events_till_next_ekf_update_ = params_.ekf_update_every_n;
   }
 }

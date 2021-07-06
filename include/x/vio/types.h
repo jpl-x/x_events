@@ -71,7 +71,7 @@ namespace x
     HASTE_DIFFERENCE_STAR,
   };
 
-  enum class EkltEkfFeatureInterpolation : char {
+  enum class AsyncFrontendFeatureInterpolation : char {
     NO_INTERPOLATION, // always take last
     NEAREST_NEIGHBOR, // take one of both
     LINEAR_NO_LIMIT,  // does linear inter- and extrapolation
@@ -79,14 +79,14 @@ namespace x
     LINEAR_ABSOLUTE_LIMIT, // does linear inter- and extrapolation until interpolation_limit in seconds is not exceeded
   };
 
-  enum class EkltEkfUpdateStrategy : char {
+  enum class AsyncFrontendUpdateStrategy : char {
     EVERY_ROS_EVENT_MESSAGE,
     EVERY_N_EVENTS,
     // triggers EKF update when incoming event timestamps are more than n msec ahead from previous update
     EVERY_N_MSEC_WITH_EVENTS,
   };
 
-  enum class EkltEkfUpdateTimestamp : char {
+  enum class AsyncFrontendUpdateTimestamp : char {
     PATCH_AVERAGE,
     PATCH_MAXIMUM,
   };
@@ -94,6 +94,38 @@ namespace x
   enum class EkltPatchTimestampAssignment : char {
     LATEST_EVENT,
     ACCUMULATED_EVENTS_CENTER,
+  };
+
+
+  /**
+   * Async frontend interpolation + update options: how HASTE and EKLT are used to generate EKF updates
+   */
+  struct AsyncFrontendParams {
+
+    /**
+     * Params for feature detection from APS frames
+     */
+    int detection_min_distance = 30; // Minimum distance between detected features. Parameter passed to goodFeatureToTrack
+    int detection_harris_block_size = 30; // Block size to compute Harris score. passed to harrisCorner and goodFeaturesToTrack
+    double detection_harris_k = 0; // Magic number for Harris score
+    double detection_harris_quality_level = 0; // Determines range of harris score allowed between the maximum and minimum. Passed to goodFeaturesToTrack
+
+    bool enable_outlier_removal = false; // Whether or not to remove outliers with the same method as xVIO
+
+    // for now same x::Params.outlier_method [...]
+    int outlier_method;
+    double outlier_param1;
+    double outlier_param2;
+
+    AsyncFrontendFeatureInterpolation ekf_feature_interpolation = AsyncFrontendFeatureInterpolation::LINEAR_NO_LIMIT;
+    // factor limiting the extrapolation amount. E.g. 0.0 means only interpolation is performed (no extrapolation), 1.0
+    // means that at most the time difference between the last two points is used for extrapolation.
+    // If < 0, no limit is applied.
+    double ekf_feature_extrapolation_limit = -1.0;
+    int ekf_update_every_n = -1;
+
+    AsyncFrontendUpdateStrategy ekf_update_strategy = AsyncFrontendUpdateStrategy::EVERY_ROS_EVENT_MESSAGE;
+    AsyncFrontendUpdateTimestamp ekf_update_timestamp = AsyncFrontendUpdateTimestamp::PATCH_AVERAGE;
   };
 
   /**
@@ -267,13 +299,10 @@ namespace x
     // feature detection
     int eklt_max_corners = 100; // Maximum features allowed to be tracked
     int eklt_min_corners = 60; // Minimum features allowed to be tracked
-    int eklt_min_distance = 30; // Minimum distance between detected features. Parameter passed to goodFeatureToTrack
-    int eklt_block_size = 30; // Block size to compute Harris score. passed to harrisCorner and goodFeaturesToTrack
 
     // tracker
-    double eklt_k = 0; // Magic number for Harris score
-    double eklt_quality_level = 0; // Determines range of harris score allowed between the maximum and minimum. Passed to goodFeaturesToTrack
     double eklt_log_eps = 1e-2; // Small constant to compute log image. To avoid numerical issues normally we compute log(img /255 + log_eps)
+    bool eklt_use_linlog_scale = false; // whether to use piecewise lin-log scale instead of log(img+log_eps)
     double eklt_first_image_t = -1; // If specified discards all images until this time.
 
     // tracker
@@ -296,19 +325,9 @@ namespace x
     bool eklt_display_feature_id = false; // Whether or not to display feature ids
     bool eklt_display_feature_patches = false; // Whether or not to display feature patches
 
-    bool eklt_enable_outlier_removal = false; // Whether or not to remove outliers with the same method as xVIO
-
-    EkltEkfFeatureInterpolation eklt_ekf_feature_interpolation = EkltEkfFeatureInterpolation::LINEAR_NO_LIMIT;
-    // factor limiting the extrapolation amount. E.g. 0.0 means only interpolation is performed (no extrapolation), 1.0
-    // means that at most the time difference between the last two points is used for extrapolation.
-    // If < 0, no limit is applied.
-    double eklt_ekf_feature_extrapolation_limit = -1.0;
-    int eklt_ekf_update_every_n = -1;
-
-    EkltEkfUpdateStrategy eklt_ekf_update_strategy = EkltEkfUpdateStrategy::EVERY_ROS_EVENT_MESSAGE;
-    EkltEkfUpdateTimestamp eklt_ekf_update_timestamp = EkltEkfUpdateTimestamp::PATCH_AVERAGE;
     EkltPatchTimestampAssignment eklt_patch_timestamp_assignment = EkltPatchTimestampAssignment::LATEST_EVENT;
-    bool eklt_use_linlog_scale = false; // whether to use piecewise lin-log scale instead of log(img+log_eps)
+
+    AsyncFrontendParams eklt_async_frontend_params;
 
 
     /**
@@ -316,6 +335,10 @@ namespace x
      */
 
     HasteTrackerType haste_tracker_type = HasteTrackerType::HASTE_DIFFERENCE_STAR;
+    AsyncFrontendParams haste_async_frontend_params;
+    int haste_patch_size = 31;
+    int haste_max_corners = 100; // Maximum features allowed to be tracked
+    int haste_min_corners = 60; // Minimum features allowed to be tracked
   };
 
   /**

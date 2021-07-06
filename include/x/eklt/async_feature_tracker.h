@@ -17,7 +17,7 @@ namespace x {
   class AsyncFeatureTracker {
   public:
 
-    explicit AsyncFeatureTracker(Camera camera, Params params, EventsPerformanceLoggerPtr event_perf_logger = nullptr);
+    explicit AsyncFeatureTracker(Camera camera, AsyncFrontendParams async_frontend_params, EventsPerformanceLoggerPtr event_perf_logger = nullptr);
 
     virtual bool updatePatch(AsyncPatch &patch, const Event &event) = 0;
 
@@ -31,10 +31,7 @@ namespace x {
 
     virtual void onPostEvent() {};
 
-    /**
-     * @brief updates the EKLT parameters in the tracker as well as in the associated viewer and optimizer
-     */
-    virtual void setParams(const Params &params);
+    void setAsyncFrontendParams(const AsyncFrontendParams& async_frontend_params);
 
     void setCamera(const Camera &camera) {
       interpolator_.setCamera(camera);
@@ -52,7 +49,8 @@ namespace x {
      */
     void processImage(double timestamp, const TiledImage &current_img);
 
-    void extractFeatures(std::vector<cv::Point2d> &features, int num_patches, const ImageBuffer::iterator &image_it);
+    void extractFeatures(std::vector<cv::Point2d> &features, int num_patches,
+                         const ImageBuffer::iterator &image_it, int patch_size);
 
     TiledImage getCurrentImage() {
       return current_image_it_->second;
@@ -67,8 +65,7 @@ namespace x {
     ImageBuffer images_;
     AsyncFeatureInterpolator interpolator_;
     double most_current_time_;
-    Params params_;
-
+    AsyncFrontendParams params_;
     EventsPerformanceLoggerPtr event_perf_logger_;
 
 

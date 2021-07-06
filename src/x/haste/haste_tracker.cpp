@@ -9,8 +9,6 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/video/tracking.hpp>
 
-
-
 #include <easy/profiler.h>
 #include <x/haste/tracking/correlation_tracker.hpp>
 #include <x/haste/tracking/haste_correlation_tracker.hpp>
@@ -21,18 +19,19 @@
 using namespace x;
 
 HasteTracker::HasteTracker(Camera camera, Params params, EventsPerformanceLoggerPtr event_perf_logger)
-  : AsyncFeatureTracker(std::move(camera), std::move(params), std::move(event_perf_logger)) {}
+  : AsyncFeatureTracker(std::move(camera), params.haste_async_frontend_params, std::move(event_perf_logger))
+  , params_(std::move(params)) {}
 
 void HasteTracker::initPatches(HastePatches &patches, std::vector<int> &lost_indices, const int &corners,
                               const ImageBuffer::iterator &image_it) {
 
   std::vector<cv::Point2d> features;
   // extract Harris corners
-  extractFeatures(features, corners, image_it);
+  extractFeatures(features, corners, image_it, params_.haste_patch_size);
 
   for (const auto & feature : features) {
     patches.emplace_back(feature, image_it->first, params_, event_perf_logger_);
-    HastePatch &patch = patches[patches.size() - 1];
+//    HastePatch &patch = patches[patches.size() - 1];
 
   }
 
@@ -72,7 +71,7 @@ void HasteTracker::initPatches(HastePatches &patches, std::vector<int> &lost_ind
 
 void HasteTracker::onInit(const ImageBuffer::iterator &image_it) {
   // extracts corners and extracts patches around them.
-  initPatches(patches_, lost_indices_, params_.eklt_max_corners, image_it);
+  initPatches(patches_, lost_indices_, params_.haste_max_corners, image_it);
 
 //  // initializes the image gradients in x and y directions for the first image
 //  // and initializes the ceres cubic interpolator for use in the optimizer
@@ -122,14 +121,14 @@ void HasteTracker::addFeatures(std::vector<int> &lost_indices, const ImageBuffer
   // find new patches to replace them lost features
   std::vector<cv::Point2d> features;
 
-  extractFeatures(features, lost_indices.size(), image_it);
+  extractFeatures(features, lost_indices.size(), image_it, params_.haste_patch_size);
 
   if (!features.empty()) {
     HastePatches patches;
 
     for (const auto & feature : features) {
       patches.emplace_back(feature, image_it->first, params_, event_perf_logger_);
-      HastePatch &patch = patches[patches.size() - 1];
+//      HastePatch &patch = patches[patches.size() - 1];
     }
 
 //    // pass the new image to the optimizer to use for future optimizations
@@ -152,7 +151,7 @@ void HasteTracker::bootstrapAllPossiblePatches(HastePatches &patches, const Imag
 }
 
 void HasteTracker::resetPatches(HastePatches &new_patches, std::vector<int> &lost_indices, const ImageBuffer::iterator &image_it) {
-  const int &p = (params_.eklt_patch_size - 1) / 2;
+  const int &p = (params_.haste_patch_size - 1) / 2;
   cv::Mat I_x, I_y, I_x_padded, I_y_padded;
 
 //  optimizer_.getLogGradients(image_it->second, I_x, I_y);
@@ -195,7 +194,7 @@ void HasteTracker::bootstrapFeatureKLT(HastePatch &patch, const cv::Mat &last_im
                            params_.eklt_num_pyramidal_layers);
 
   // compute optical flow angle as direction where the feature moved
-  double opt_flow_angle = std::atan2(next_points[0].y - points[0].y, next_points[0].x - points[0].x);
+//  double opt_flow_angle = std::atan2(next_points[0].y - points[0].y, next_points[0].x - points[0].x);
 //  patch.flow_angle_ = opt_flow_angle;
 
 //  // initialize warping as pure translation to new point
@@ -238,7 +237,7 @@ void HasteTracker::onNewImageReceived() {
   bootstrapAllPossiblePatches(patches_, current_image_it_);
 
   // replenish features if there are too few
-  if (lost_indices_.size() > static_cast<size_t>(params_.eklt_max_corners - params_.eklt_min_corners))
+  if (lost_indices_.size() > static_cast<size_t>(params_.haste_max_corners - params_.haste_min_corners))
     addFeatures(lost_indices_, current_image_it_);
 }
 

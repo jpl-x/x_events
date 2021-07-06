@@ -44,6 +44,11 @@ namespace x {
      */
     bool updatePatch(AsyncPatch &patch, const Event &event) override;
 
+    void setParams(const Params &params) {
+      params_ = params;
+      setAsyncFrontendParams(params.haste_async_frontend_params);
+    }
+
   private:
 
     /**
@@ -95,10 +100,11 @@ namespace x {
       return (p.y < 0 || p.y >= params_.img_height || p.x < 0 || p.x >= params_.img_width);
     }
 
+    Params params_;
+
     // patch parameters
     HastePatches patches_;
     std::vector<int> lost_indices_;
-
 
     inline void discardPatch(HastePatch &patch) {
       // if the patch has been lost record it in lost_indices_
