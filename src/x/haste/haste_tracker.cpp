@@ -194,7 +194,7 @@ void HasteTracker::bootstrapFeatureKLT(HastePatch &patch, const cv::Mat &last_im
                            params_.eklt_num_pyramidal_layers);
 
   // compute optical flow angle as direction where the feature moved
-//  double opt_flow_angle = std::atan2(next_points[0].y - points[0].y, next_points[0].x - points[0].x);
+  double opt_flow_angle = std::atan2(next_points[0].y - points[0].y, next_points[0].x - points[0].x);
 //  patch.flow_angle_ = opt_flow_angle;
 
 //  // initialize warping as pure translation to new point

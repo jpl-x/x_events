@@ -27,8 +27,8 @@ auto HasteDifferenceTracker::initializeHypotheses() -> void {
 
 auto HasteDifferenceTracker::updateHypothesesScore(const EventTuple &oldest_event, const EventTuple &newest_event)
     -> void {
-  const auto &[t_old, x_old, y_old] = oldest_event;
-  const auto &[t_new, x_new, y_new] = newest_event;
+//  const auto &[t_old, x_old, y_old] = oldest_event;
+//  const auto &[t_new, x_new, y_new] = newest_event;
 
   for (size_t i = 0; i < kNumHypotheses; ++i) {
     hypotheses_score_[i] = -getDifferencePatch_(hypotheses_[i]).square().sum();

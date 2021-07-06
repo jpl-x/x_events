@@ -68,7 +68,7 @@ auto InterpolatorType<Value, Location>::bilinearSampleVector(const ValueArray<kR
                 "Arrays must be composed of doubles or float");
   static_assert(kRows != -1 || kCols != -1, "Sampled array must be fixed size");
 
-  using ValueVector = Eigen::Array<Value, kSamples, 1>;
+//  using ValueVector = Eigen::Array<Value, kSamples, 1>;
   using LocationVector = Eigen::Array<Location, kSamples, 1>;
   using LinearArray = Eigen::Array<Value, kRows * kCols, 1>;
   using LinearArrayConstMap = Eigen::Map<const LinearArray>;
