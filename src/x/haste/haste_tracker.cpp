@@ -238,5 +238,12 @@ void HasteTracker::onNewImageReceived() {
     addFeatures(lost_indices_, current_image_it_);
 }
 
+void HasteTracker::discardPatch(AsyncPatch &async_patch) {
+  HastePatch& patch = dynamic_cast<HastePatch&>(async_patch);
+  // if the patch has been lost record it in lost_indices_
+  patch.lost_ = true;
+  lost_indices_.push_back(&patch - &patches_[0]);
+}
+
 
 

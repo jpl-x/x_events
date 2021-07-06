@@ -24,7 +24,8 @@ namespace x {
 
     Feature interpolatePatchToTime(const AsyncPatch* patch, double t);
 
-    MatchList getMatchListFromPatches(const std::vector<AsyncPatch *>& active_patches);
+    MatchList getMatchListFromPatches(const std::vector<AsyncPatch *>& active_patches,
+                                      std::vector<AsyncPatch *>& detected_outliers);
 
     void setParams(const AsyncFrontendParams& params) {
       params_ = params;
@@ -58,13 +59,6 @@ namespace x {
      * @return true on success, false otherwise
      */
     bool setPreviousFeature(const x::AsyncPatch* p, x::Feature& f_prev, double t_cur);
-
-    /**
-     * Removes outliers if enabled in EKLT parameters
-     * @param matches
-     * @return
-     */
-    MatchList refineMatches(MatchList &matches) const;
   };
 
 

@@ -295,3 +295,15 @@ void EkltTracker::renderVisualization(TiledImage &tracker_debug_image_output) {
   tracker_debug_image_output = viewer_ptr_->getFeatureTrackViewImage();
 }
 
+void EkltTracker::discardPatch(AsyncPatch &async_patch) {
+  EkltPatch& patch = dynamic_cast<EkltPatch&>(async_patch);
+  // if the patch has been lost record it in lost_indices_
+  patch.lost_ = true;
+  lost_indices_.push_back(&patch - &patches_[0]);
+
+  if (eklt_perf_logger_)
+    eklt_perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.getId(), EkltTrackUpdateType::Lost,
+                                              patch.getCurrentTime(), patch.getCenter().x, patch.getCenter().y,
+                                              patch.flow_angle_);
+}
+

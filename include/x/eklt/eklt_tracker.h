@@ -133,16 +133,7 @@ bool updatePatch(AsyncPatch &patch, const Event &event) override;
 
     int viewer_counter_ = 0;
 
-    inline void discardPatch(EkltPatch &patch) {
-      // if the patch has been lost record it in lost_indices_
-      patch.lost_ = true;
-      lost_indices_.push_back(&patch - &patches_[0]);
-
-      if (eklt_perf_logger_)
-        eklt_perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.getId(), EkltTrackUpdateType::Lost,
-                                                  patch.getCurrentTime(), patch.getCenter().x, patch.getCenter().y,
-                                                  patch.flow_angle_);
-    }
+    void discardPatch(AsyncPatch &async_patch) override;
 
   };
 
