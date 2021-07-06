@@ -119,6 +119,7 @@ std::vector<x::MatchList> x::AsyncFeatureTracker::processEvents(const EventArray
       image_it--;
       images_.erase(image_it);
     }
+    std::vector<AsyncPatch* > detected_outliers;
 
     switch (params_.ekf_update_strategy) {
       case AsyncFrontendUpdateStrategy::EVERY_ROS_EVENT_MESSAGE:
@@ -129,7 +130,7 @@ std::vector<x::MatchList> x::AsyncFeatureTracker::processEvents(const EventArray
           if (did_some_patch_change) {
             events_till_next_ekf_update_ = params_.ekf_update_every_n;
             did_some_patch_change = false;
-            match_lists_for_ekf_updates.push_back(interpolator_.getMatchListFromPatches(getActivePatches()));
+            match_lists_for_ekf_updates.push_back(interpolator_.getMatchListFromPatches(getActivePatches(), detected_outliers));
           } else {
             events_till_next_ekf_update_ = 1; // try on next event again
           }
@@ -139,16 +140,25 @@ std::vector<x::MatchList> x::AsyncFeatureTracker::processEvents(const EventArray
         if (ev.ts - last_ekf_update_timestamp_ >= params_.ekf_update_every_n * 1e-3 && did_some_patch_change) {
           did_some_patch_change = false;
           last_ekf_update_timestamp_ = ev.ts;
-          match_lists_for_ekf_updates.push_back(interpolator_.getMatchListFromPatches(getActivePatches()));
+          match_lists_for_ekf_updates.push_back(interpolator_.getMatchListFromPatches(getActivePatches(), detected_outliers));
         }
         break;
+    }
+
+    for (auto& p : detected_outliers) {
+      discardPatch(*p);
     }
 
     onPostEvent();
   }
 
   if (did_some_patch_change && params_.ekf_update_strategy == AsyncFrontendUpdateStrategy::EVERY_ROS_EVENT_MESSAGE) {
-    match_lists_for_ekf_updates.push_back(interpolator_.getMatchListFromPatches(getActivePatches()));
+    std::vector<AsyncPatch* > detected_outliers;
+    match_lists_for_ekf_updates.push_back(interpolator_.getMatchListFromPatches(getActivePatches(), detected_outliers));
+
+    for (auto& p : detected_outliers) {
+      discardPatch(*p);
+    }
   }
   return match_lists_for_ekf_updates;
 }

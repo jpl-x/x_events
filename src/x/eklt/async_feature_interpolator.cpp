@@ -107,7 +107,8 @@ x::Feature x::AsyncFeatureInterpolator::createUndistortedFeature(double t, doubl
   return f;
 }
 
-x::MatchList x::AsyncFeatureInterpolator::getMatchListFromPatches(const std::vector<AsyncPatch *>& active_patches) {
+x::MatchList x::AsyncFeatureInterpolator::getMatchListFromPatches(const std::vector<AsyncPatch *>& active_patches,
+                                                                  std::vector<AsyncPatch *>& detected_outliers) {
   EASY_FUNCTION();
 
   double interpolation_time = getInterpolationTime(active_patches);
@@ -115,6 +116,10 @@ x::MatchList x::AsyncFeatureInterpolator::getMatchListFromPatches(const std::vec
   MatchList matches;
 
   std::map<int, x::Feature> new_features;
+  std::vector<AsyncPatch *> chosen_patches;
+
+  matches.reserve(active_patches.size());
+  chosen_patches.reserve(active_patches.size());
 
   for (auto& p : active_patches) {
     auto new_pos = interpolatePatchToTime(p, interpolation_time);
@@ -128,17 +133,14 @@ x::MatchList x::AsyncFeatureInterpolator::getMatchListFromPatches(const std::vec
       continue;
 
     matches.push_back(m);
+    chosen_patches.push_back(p);
     new_features[p->getId()] = m.current;
   }
 
   std::swap(previous_features_, new_features);
   previous_time_ = interpolation_time;
 
-  // remove outliers
-  return refineMatches(matches);
-}
-
-x::MatchList x::AsyncFeatureInterpolator::refineMatches(x::MatchList &matches) const {
+  // remove outliers if necessary
   if (matches.empty() || !params_.enable_outlier_removal)
     return matches;
 

@@ -106,11 +106,7 @@ namespace x {
     HastePatches patches_;
     std::vector<int> lost_indices_;
 
-    inline void discardPatch(HastePatch &patch) {
-      // if the patch has been lost record it in lost_indices_
-      patch.lost_ = true;
-      lost_indices_.push_back(&patch - &patches_[0]);
-    }
+    void discardPatch(AsyncPatch& async_patch) override;
 
   };
 

@@ -24,6 +24,7 @@ namespace x {
     virtual void onInit(const ImageBuffer::iterator &image_it) = 0;
 
     virtual std::vector<AsyncPatch *> getActivePatches() = 0;
+    virtual void discardPatch(AsyncPatch &async_patch) = 0;
 
     virtual ~AsyncFeatureTracker() = default;
 
