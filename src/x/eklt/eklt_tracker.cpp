@@ -14,8 +14,9 @@
 using namespace x;
 
 EkltTracker::EkltTracker(Camera camera, Viewer &viewer, Params params, EventsPerformanceLoggerPtr event_perf_logger, EkltPerformanceLoggerPtr p_logger)
-  : AsyncFeatureTracker(std::move(camera), std::move(params), std::move(event_perf_logger))
+  : AsyncFeatureTracker(std::move(camera), params.eklt_async_frontend_params, std::move(event_perf_logger))
   , eklt_perf_logger_(std::move(p_logger))
+  , params_(std::move(params))
   , optimizer_(params_, eklt_perf_logger_)
   , viewer_ptr_(&viewer)  {
 }
@@ -25,7 +26,7 @@ void EkltTracker::initPatches(EkltPatches &patches, std::vector<int> &lost_indic
 
   std::vector<cv::Point2d> features;
   // extract Harris corners
-  extractFeatures(features, corners, image_it);
+  extractFeatures(features, corners, image_it, params_.eklt_patch_size);
 
   for (const auto & feature : features) {
     patches.emplace_back(feature, image_it->first, params_, event_perf_logger_);
@@ -138,7 +139,7 @@ void EkltTracker::addFeatures(std::vector<int> &lost_indices, const ImageBuffer:
   // find new patches to replace them lost features
   std::vector<cv::Point2d> features;
 
-  extractFeatures(features, lost_indices.size(), image_it);
+  extractFeatures(features, lost_indices.size(), image_it, params_.eklt_patch_size);
 
   if (!features.empty()) {
     EkltPatches patches;

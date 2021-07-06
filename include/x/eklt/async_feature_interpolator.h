@@ -19,14 +19,14 @@ namespace x {
 
   class AsyncFeatureInterpolator {
   public:
-    AsyncFeatureInterpolator(x::Params  params, x::Camera  cam)
-    : camera_(std::move(cam)), params_(std::move(params)) {}
+    AsyncFeatureInterpolator(x::AsyncFrontendParams params, x::Camera  cam)
+    : camera_(std::move(cam)), params_(params) {}
 
     Feature interpolatePatchToTime(const AsyncPatch* patch, double t);
 
     MatchList getMatchListFromPatches(const std::vector<AsyncPatch *>& active_patches);
 
-    void setParams(const Params& params) {
+    void setParams(const AsyncFrontendParams& params) {
       params_ = params;
     }
 
@@ -36,7 +36,7 @@ namespace x {
 
   private:
     x::Camera camera_;
-    x::Params params_;
+    x::AsyncFrontendParams params_;
     std::map<int, x::Feature> previous_features_;
     double previous_time_ = kInvalid;
 

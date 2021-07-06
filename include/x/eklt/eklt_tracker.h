@@ -27,8 +27,9 @@ namespace x {
                          EventsPerformanceLoggerPtr event_perf_logger = nullptr,
                          EkltPerformanceLoggerPtr eklt_perf_logger = nullptr);
 
-    void setParams(const Params &params) override {
-      AsyncFeatureTracker::setParams(params);
+    void setParams(const Params &params) {
+      params_ = params;
+      setAsyncFrontendParams(params.eklt_async_frontend_params);
       viewer_ptr_->setParams(params);
       optimizer_.setParams(params);
     }
@@ -57,6 +58,7 @@ namespace x {
 
 
     EkltPerformanceLoggerPtr eklt_perf_logger_;
+    Params params_;
     Optimizer optimizer_;
 
 /**

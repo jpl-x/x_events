@@ -8,8 +8,6 @@
 #include <x/eklt/async_feature_interpolator.h>
 
 x::Feature x::AsyncFeatureInterpolator::interpolatePatchToTime(const x::AsyncPatch *p, double t) {
-
-
   auto& c_cur = p->getCenter();
 
   double x, y;
@@ -22,8 +20,8 @@ x::Feature x::AsyncFeatureInterpolator::interpolatePatchToTime(const x::AsyncPat
     auto& c_prev = p->track_hist_[p->track_hist_.size() - 2].second;
     auto& t_cur = p->getCurrentTime();
 
-    switch (params_.eklt_ekf_feature_interpolation) {
-      case EkltEkfFeatureInterpolation::NEAREST_NEIGHBOR: {
+    switch (params_.ekf_feature_interpolation) {
+      case AsyncFrontendFeatureInterpolation::NEAREST_NEIGHBOR: {
         double smallest_deviation = std::numeric_limits<double>::max();
         for (auto it = p->track_hist_.cend() - 1; it >= p->track_hist_.cbegin(); --it) {
           if (smallest_deviation > fabs(it->first - t)) {
@@ -37,7 +35,7 @@ x::Feature x::AsyncFeatureInterpolator::interpolatePatchToTime(const x::AsyncPat
         }
         break;
       }
-      case EkltEkfFeatureInterpolation::LINEAR_NO_LIMIT: {
+      case AsyncFrontendFeatureInterpolation::LINEAR_NO_LIMIT: {
         // time factor assembles normed time distance from current center: e.g. -1 --> previous_center
         double time_factor = 0;
 
@@ -49,7 +47,7 @@ x::Feature x::AsyncFeatureInterpolator::interpolatePatchToTime(const x::AsyncPat
 
         break;
       }
-      case EkltEkfFeatureInterpolation::LINEAR_RELATIVE_LIMIT: {
+      case AsyncFrontendFeatureInterpolation::LINEAR_RELATIVE_LIMIT: {
         // time factor assembles normed time distance from current center: e.g. -1 --> previous_center
         double time_factor = 0;
 
@@ -57,16 +55,16 @@ x::Feature x::AsyncFeatureInterpolator::interpolatePatchToTime(const x::AsyncPat
           time_factor = (t - t_cur) / (t_cur - t_prev);
 
         if (time_factor > 0) {
-          time_factor = fmin(time_factor, params_.eklt_ekf_feature_extrapolation_limit);
+          time_factor = fmin(time_factor, params_.ekf_feature_extrapolation_limit);
         } else {
-          time_factor = fmax(time_factor, -1 - params_.eklt_ekf_feature_extrapolation_limit);
+          time_factor = fmax(time_factor, -1 - params_.ekf_feature_extrapolation_limit);
         }
 
         x = c_cur.x + time_factor * (c_cur.x - c_prev.x);
         y = c_cur.y + time_factor * (c_cur.y - c_prev.y);
         break;
       }
-      case EkltEkfFeatureInterpolation::LINEAR_ABSOLUTE_LIMIT: {
+      case AsyncFrontendFeatureInterpolation::LINEAR_ABSOLUTE_LIMIT: {
         // time factor assembles normed time distance from current center: e.g. -1 --> previous_center
         double time_factor = 0;
 
@@ -74,9 +72,9 @@ x::Feature x::AsyncFeatureInterpolator::interpolatePatchToTime(const x::AsyncPat
           time_factor = (t - t_cur) / (t_cur - t_prev);
 
           if (time_factor > 0) {
-            time_factor = fmin(time_factor, params_.eklt_ekf_feature_extrapolation_limit / (t_cur - t_prev));
+            time_factor = fmin(time_factor, params_.ekf_feature_extrapolation_limit / (t_cur - t_prev));
           } else {
-            time_factor = fmax(time_factor, -1 - params_.eklt_ekf_feature_extrapolation_limit / (t_cur - t_prev));
+            time_factor = fmax(time_factor, -1 - params_.ekf_feature_extrapolation_limit / (t_cur - t_prev));
           }
         }
 
@@ -85,7 +83,7 @@ x::Feature x::AsyncFeatureInterpolator::interpolatePatchToTime(const x::AsyncPat
         break;
       }
 
-      case EkltEkfFeatureInterpolation::NO_INTERPOLATION:
+      case AsyncFrontendFeatureInterpolation::NO_INTERPOLATION:
       default:
         x = c_cur.x;
         y = c_cur.y;
@@ -141,7 +139,7 @@ x::MatchList x::AsyncFeatureInterpolator::getMatchListFromPatches(const std::vec
 }
 
 x::MatchList x::AsyncFeatureInterpolator::refineMatches(x::MatchList &matches) const {
-  if (matches.empty() || !params_.eklt_enable_outlier_removal)
+  if (matches.empty() || !params_.enable_outlier_removal)
     return matches;
 
   std::vector<cv::Point2f> pts1, pts2;
@@ -175,12 +173,12 @@ double x::AsyncFeatureInterpolator::getInterpolationTime(const std::vector<Async
   int N = 0;
 
   for (auto& p : active_patches) {
-    switch (params_.eklt_ekf_update_timestamp) {
-      case EkltEkfUpdateTimestamp::PATCH_AVERAGE:
+    switch (params_.ekf_update_timestamp) {
+      case AsyncFrontendUpdateTimestamp::PATCH_AVERAGE:
         interpolation_time = (N * interpolation_time + p->getCurrentTime()) / (N+1);
         ++N;
         break;
-      case EkltEkfUpdateTimestamp::PATCH_MAXIMUM:
+      case AsyncFrontendUpdateTimestamp::PATCH_MAXIMUM:
         interpolation_time = std::max(interpolation_time, p->getCurrentTime());
         break;
     }
@@ -200,8 +198,8 @@ bool x::AsyncFeatureInterpolator::setPreviousFeature(const x::AsyncPatch* p, x::
     if (previous_time_ == kInvalid) {
       // best effort to find proper previous interpolation
 
-      if (params_.eklt_ekf_update_strategy == EkltEkfUpdateStrategy::EVERY_N_MSEC_WITH_EVENTS) {
-        f_prev = interpolatePatchToTime(p, t_cur - params_.eklt_ekf_update_every_n * 1e-3);
+      if (params_.ekf_update_strategy == AsyncFrontendUpdateStrategy::EVERY_N_MSEC_WITH_EVENTS) {
+        f_prev = interpolatePatchToTime(p, t_cur - params_.ekf_update_every_n * 1e-3);
       } else {
         // take simply first position
         f_prev = createUndistortedFeature(p->track_hist_.front().first, p->track_hist_.front().second.x,
