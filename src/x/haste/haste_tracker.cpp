@@ -103,6 +103,9 @@ bool HasteTracker::updatePatch(AsyncPatch &async_patch, const Event &event) {
       // skip
       return false;
     case haste::HypothesisPatchTracker::kRegularEvent:
+      // confirm last position
+      patch.confirmLastPosition(patch.hypothesis_tracker_->t());
+      break;
     case haste::HypothesisPatchTracker::kStateEvent:
       patch.updateCenter(patch.hypothesis_tracker_->t(), {patch.hypothesis_tracker_->x(), patch.hypothesis_tracker_->y()});
 //      patch.flow_angle_ = patch.hypothesis_tracker_->theta();

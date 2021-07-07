@@ -37,6 +37,15 @@ namespace x {
       track_hist_.emplace_back(t, center);
     }
 
+    void confirmLastPosition(double t) {
+      // keep two consecutive points in the list(?)
+      if (track_hist_.size() < 2 || track_hist_.back().second != track_hist_.at(track_hist_.size()-2).second) {
+        updateTrack(t, track_hist_.back().second);
+      } else {
+        track_hist_.back().first = t;
+      }
+    }
+
     const cv::Point2d & getCenter() const {
       return track_hist_.back().second;
     }
