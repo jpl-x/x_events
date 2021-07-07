@@ -40,7 +40,8 @@ namespace x {
     void confirmLastPosition(double t) {
       // keep two consecutive points in the list(?)
       if (track_hist_.size() < 2 || track_hist_.back().second != track_hist_.at(track_hist_.size()-2).second) {
-        updateTrack(t, track_hist_.back().second);
+        // TODO this logic needs to be moved into the tracker as it changes performance --> new field in x::Params(!)
+//        updateTrack(t, track_hist_.back().second);
       } else {
         track_hist_.back().first = t;
       }
