@@ -39,6 +39,10 @@ namespace x {
     x::Camera camera_;
     x::AsyncFrontendParams params_;
     std::map<int, x::Feature> previous_features_;
+    /**
+     * Minimum time gap between consecutive interpolation timestamps (ensures monotonically increasing update timestamps)
+     */
+    const double time_eps_ = 1e-6;
     double previous_time_ = kInvalid;
 
     inline bool isFeatureOutOfView(const Feature& f) const {
