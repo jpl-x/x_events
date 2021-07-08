@@ -159,12 +159,16 @@ x::MatchList x::AsyncFeatureInterpolator::getMatchListFromPatches(const std::vec
   matches_refined.reserve(matches.size()); // prepare for best case
 
   auto m_it = matches.cbegin();
+  auto p_it = chosen_patches.cbegin();
 
   for (const auto& m : mask) {
     if (m) {
       matches_refined.push_back(*m_it);
+    } else {
+      detected_outliers.push_back(*p_it);
     }
     ++m_it;
+    ++p_it;
   }
 
   return matches_refined;
@@ -185,6 +189,7 @@ double x::AsyncFeatureInterpolator::getInterpolationTime(const std::vector<Async
         break;
     }
   }
+  interpolation_time = fmax(previous_time_ + time_eps_, interpolation_time);
   return interpolation_time;
 }
 
