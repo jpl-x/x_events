@@ -96,7 +96,9 @@ std::vector<x::MatchList> x::AsyncFeatureTracker::processEvents(const EventArray
   }
 
   bool did_some_patch_change = false;
+  double last_event_ts = -1;
   for (const auto &ev : msg->events) {
+    last_event_ts = ev.ts;
     EASY_EVENT("Single Event");
     EventPerfHelper helper(event_perf_logger_);
     // keep track of the most current time with latest time stamp from event
@@ -130,7 +132,8 @@ std::vector<x::MatchList> x::AsyncFeatureTracker::processEvents(const EventArray
           if (did_some_patch_change) {
             events_till_next_ekf_update_ = params_.ekf_update_every_n;
             did_some_patch_change = false;
-            match_lists_for_ekf_updates.push_back(interpolator_.getMatchListFromPatches(getActivePatches(), detected_outliers));
+            match_lists_for_ekf_updates.push_back(
+              interpolator_.getMatchListFromPatches(getActivePatches(), detected_outliers, last_event_ts));
           } else {
             events_till_next_ekf_update_ = 1; // try on next event again
           }
@@ -140,7 +143,8 @@ std::vector<x::MatchList> x::AsyncFeatureTracker::processEvents(const EventArray
         if (ev.ts - last_ekf_update_timestamp_ >= params_.ekf_update_every_n * 1e-3 && did_some_patch_change) {
           did_some_patch_change = false;
           last_ekf_update_timestamp_ = ev.ts;
-          match_lists_for_ekf_updates.push_back(interpolator_.getMatchListFromPatches(getActivePatches(), detected_outliers));
+          match_lists_for_ekf_updates.push_back(
+            interpolator_.getMatchListFromPatches(getActivePatches(), detected_outliers, last_event_ts));
         }
         break;
     }
@@ -154,7 +158,8 @@ std::vector<x::MatchList> x::AsyncFeatureTracker::processEvents(const EventArray
 
   if (did_some_patch_change && params_.ekf_update_strategy == AsyncFrontendUpdateStrategy::EVERY_ROS_EVENT_MESSAGE) {
     std::vector<AsyncPatch* > detected_outliers;
-    match_lists_for_ekf_updates.push_back(interpolator_.getMatchListFromPatches(getActivePatches(), detected_outliers));
+    match_lists_for_ekf_updates.push_back(
+      interpolator_.getMatchListFromPatches(getActivePatches(), detected_outliers, last_event_ts));
 
     for (auto& p : detected_outliers) {
       discardPatch(*p);
@@ -179,6 +184,7 @@ void x::AsyncFeatureTracker::processImage(double timestamp, const TiledImage &cu
 
 void AsyncFeatureTracker::setAsyncFrontendParams(const AsyncFrontendParams &async_frontend_params) {
   params_ = async_frontend_params;
+  interpolator_.setParams(async_frontend_params);
   if (params_.ekf_update_strategy == AsyncFrontendUpdateStrategy::EVERY_N_EVENTS) {
     events_till_next_ekf_update_ = params_.ekf_update_every_n;
   }

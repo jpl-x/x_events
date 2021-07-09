@@ -108,10 +108,11 @@ x::Feature x::AsyncFeatureInterpolator::createUndistortedFeature(double t, doubl
 }
 
 x::MatchList x::AsyncFeatureInterpolator::getMatchListFromPatches(const std::vector<AsyncPatch *>& active_patches,
-                                                                  std::vector<AsyncPatch *>& detected_outliers) {
+                                                                  std::vector<AsyncPatch *>& detected_outliers,
+                                                                  double latest_event_ts) {
   EASY_FUNCTION();
 
-  double interpolation_time = getInterpolationTime(active_patches);
+  double interpolation_time = getInterpolationTime(active_patches, latest_event_ts);
 
   MatchList matches;
 
@@ -174,20 +175,25 @@ x::MatchList x::AsyncFeatureInterpolator::getMatchListFromPatches(const std::vec
   return matches_refined;
 }
 
-double x::AsyncFeatureInterpolator::getInterpolationTime(const std::vector<AsyncPatch *>& active_patches) const {
+double x::AsyncFeatureInterpolator::getInterpolationTime(const std::vector<AsyncPatch *>& active_patches,
+                                                         double latest_event_ts) const {
   double interpolation_time = std::numeric_limits<double>::lowest();
   int N = 0;
 
-  for (auto& p : active_patches) {
-    switch (params_.ekf_update_timestamp) {
-      case AsyncFrontendUpdateTimestamp::PATCH_AVERAGE:
-        interpolation_time = (N * interpolation_time + p->getCurrentTime()) / (N+1);
+  switch (params_.ekf_update_timestamp) {
+    case AsyncFrontendUpdateTimestamp::PATCH_AVERAGE:
+      for (auto& p : active_patches) {
+        interpolation_time = (N * interpolation_time + p->getCurrentTime()) / (N + 1);
         ++N;
-        break;
-      case AsyncFrontendUpdateTimestamp::PATCH_MAXIMUM:
+      }
+      break;
+    case AsyncFrontendUpdateTimestamp::PATCH_MAXIMUM:
+      for (auto& p : active_patches) {
         interpolation_time = std::max(interpolation_time, p->getCurrentTime());
-        break;
-    }
+      }
+      break;
+    case AsyncFrontendUpdateTimestamp::LATEST_EVENT_TS:
+      interpolation_time = latest_event_ts;
   }
   interpolation_time = fmax(previous_time_ + time_eps_, interpolation_time);
   return interpolation_time;
