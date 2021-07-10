@@ -340,6 +340,8 @@ namespace x
     int haste_patch_size = 31;
     int haste_max_corners = 100; // Maximum features allowed to be tracked
     int haste_min_corners = 60; // Minimum features allowed to be tracked
+    bool haste_bootstrap_from_frames = false;
+    bool haste_bootstrap_with_unit_length_of = true;
   };
 
   /**

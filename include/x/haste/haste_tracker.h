@@ -59,7 +59,7 @@ namespace x {
     /**
    * @brief bootstrapping features: Uses first two frames to initialize feature translation and optical flow.
    */
-    void bootstrapFeatureKLT(HastePatch &patch, const cv::Mat &last_image, const cv::Mat &current_image);
+    void bootstrapFeatureKLT(HastePatch &patch, const cv::Mat &last_image, const TiledImage &current_image, Interpolator* interpolator);
 
     HypothesisTrackerPtr createHypothesisTracker(double t, double x, double y, double theta);
 

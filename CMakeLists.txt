@@ -77,7 +77,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 find_package(Eigen3 REQUIRED)
-message("Eigen version: ${Eigen3_VERSION}")
+#message("Eigen version: ${Eigen3_VERSION}")
 find_package(easy_profiler_catkin REQUIRED)
 
 
@@ -157,6 +157,7 @@ set (SOURCE
   src/x/eklt/eklt_vio_updater.cpp
   src/x/eklt/eklt_vio.cpp
   src/x/eklt/types.cpp
+  src/x/eklt/utils.cpp
   src/x/events/e_vio.cpp
   src/x/events/event_accumulator.cpp
   src/x/eklt/async_feature_tracker.cpp

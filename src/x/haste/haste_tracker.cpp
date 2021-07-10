@@ -15,6 +15,7 @@
 #include <x/haste/tracking/haste_correlation_star_tracker.hpp>
 #include <x/haste/tracking/haste_difference_tracker.hpp>
 #include <x/haste/tracking/haste_difference_star_tracker.hpp>
+#include <x/eklt/utils.h>
 
 using namespace x;
 
@@ -31,7 +32,7 @@ void HasteTracker::initPatches(HastePatches &patches, std::vector<int> &lost_ind
 
   for (const auto & feature : features) {
     patches.emplace_back(feature, image_it->first, params_, event_perf_logger_);
-//    HastePatch &patch = patches[patches.size() - 1];
+    patches.back().hypothesis_tracker_ = createHypothesisTracker(image_it->first, feature.x, feature.y, 0);
 
   }
 
@@ -85,16 +86,15 @@ void HasteTracker::onInit(const ImageBuffer::iterator &image_it) {
 
 bool HasteTracker::updatePatch(AsyncPatch &async_patch, const Event &event) {
   auto& patch = dynamic_cast<HastePatch&>(async_patch);
-  // if patch is lost or event does not fall within patch
-  // or the event has occurred before the most recent patch timestamp
-  // or the patch has not been bootstrapped yet, do not process event
-  if (patch.lost_ ||
-//      (params_.eklt_bootstrap == "klt" && !patch.initialized_) ||
-      !patch.initialized_ ||  // check how to handle this
-      patch.getCurrentTime() > event.ts)
+  // if patch is lost or the event has occurred before the most recent patch timestamp do not process event
+  if (patch.lost_ || patch.getCurrentTime() > event.ts)
     return false;
 
   auto update_type = patch.hypothesis_tracker_->pushEvent(event.ts, event.x, event.y);
+
+  // push event to accumulate features, but don't go any further
+  if (params_.haste_bootstrap_from_frames && !patch.initialized_)
+    return false;
 
   switch (update_type) {
 
@@ -108,7 +108,6 @@ bool HasteTracker::updatePatch(AsyncPatch &async_patch, const Event &event) {
       break;
     case haste::HypothesisPatchTracker::kStateEvent:
       patch.updateCenter(patch.hypothesis_tracker_->t(), {patch.hypothesis_tracker_->x(), patch.hypothesis_tracker_->y()});
-//      patch.flow_angle_ = patch.hypothesis_tracker_->theta();
       break;
   }
 
@@ -131,7 +130,7 @@ void HasteTracker::addFeatures(std::vector<int> &lost_indices, const ImageBuffer
 
     for (const auto & feature : features) {
       patches.emplace_back(feature, image_it->first, params_, event_perf_logger_);
-//      HastePatch &patch = patches[patches.size() - 1];
+      patches.back().hypothesis_tracker_ = createHypothesisTracker(image_it->first, feature.x, feature.y, 0);
     }
 
 //    // pass the new image to the optimizer to use for future optimizations
@@ -143,14 +142,37 @@ void HasteTracker::addFeatures(std::vector<int> &lost_indices, const ImageBuffer
 }
 
 void HasteTracker::bootstrapAllPossiblePatches(HastePatches &patches, const ImageBuffer::iterator &image_it) {
+  std::vector<double> grad;
+  Grid* grid = nullptr;
+  Interpolator* interpolator = nullptr;
+
   for (auto & patch : patches) {
     // if a patch is already bootstrapped, lost or has just been extracted
     if (patch.initialized_ || patch.lost_ || patch.t_init_ == image_it->first)
       continue;
 
+    // compute gradients only if necessary
+    if (!interpolator) {
+      cv::Mat I_x, I_y;
+      computeLogImgGradients(image_it->second, I_x, I_y, 1e-2, true);
+
+      // initialize grid that is used by ceres interpolator
+      for (int row = 0; row < image_it->second.rows; row++) {
+        for (int col = 0; col < image_it->second.cols; col++) {
+          grad.push_back(I_x.at<double>(row, col));
+          grad.push_back(I_y.at<double>(row, col));
+        }
+      }
+      grid = new Grid(grad.data(), 0, image_it->second.rows, 0, image_it->second.cols);
+      interpolator = new Interpolator(*grid);
+    }
+
     // perform bootstrapping using KLT and the first 2 frames
-    bootstrapFeatureKLT(patch, images_[patch.t_init_], image_it->second);
+    bootstrapFeatureKLT(patch, images_[patch.t_init_], image_it->second, interpolator);
   }
+
+  delete grid;
+  delete interpolator;
 }
 
 void HasteTracker::resetPatches(HastePatches &new_patches, std::vector<int> &lost_indices, const ImageBuffer::iterator &image_it) {
@@ -178,13 +200,14 @@ void HasteTracker::resetPatches(HastePatches &new_patches, std::vector<int> &los
 //    auto grad = std::make_pair(p_I_x.clone(), p_I_y.clone());
 
     patches_[index].reset(reset_patch.getCenter(), reset_patch.t_init_);
+    patches_[index].hypothesis_tracker_ = createHypothesisTracker(reset_patch.t_init_, reset_patch.init_center_.x, reset_patch.init_center_.y, 0);
 //    setBatchSize(patches_[index], params_.eklt_displacement_px);
 //
     lost_indices.erase(lost_indices.begin() + i);
   }
 }
 
-void HasteTracker::bootstrapFeatureKLT(HastePatch &patch, const cv::Mat &last_image, const cv::Mat &current_image) {
+void HasteTracker::bootstrapFeatureKLT(HastePatch &patch, const cv::Mat &last_image, const TiledImage &current_image, Interpolator* interpolator) {
   // bootstrap feature by initializing its warp and optical flow with KLT on successive images
   std::vector<cv::Point2f> points = {patch.init_center_};
   std::vector<cv::Point2f> next_points;
@@ -197,7 +220,9 @@ void HasteTracker::bootstrapFeatureKLT(HastePatch &patch, const cv::Mat &last_im
                            params_.eklt_num_pyramidal_layers);
 
   // compute optical flow angle as direction where the feature moved
-  double opt_flow_angle = std::atan2(next_points[0].y - points[0].y, next_points[0].x - points[0].x);
+  double klt_delta_x = next_points[0].x - points[0].x;
+  double klt_delta_y = next_points[0].y - points[0].y;
+  double opt_flow_angle = std::atan2(klt_delta_y, klt_delta_x);
 //  patch.flow_angle_ = opt_flow_angle;
 
 //  // initialize warping as pure translation to new point
@@ -212,7 +237,44 @@ void HasteTracker::bootstrapFeatureKLT(HastePatch &patch, const cv::Mat &last_im
     patch.lost_ = true;
     lost_indices_.push_back(&patch - &patches_[0]);
   } else {
-    patch.hypothesis_tracker_ = createHypothesisTracker(current_image_it_->first, next_points[0].x, next_points[0].y, opt_flow_angle);
+//    // this could  be used as "outlier rejection" - if the patch diverged already from the KLT estimate
+//    double delta_x = fabs(next_points[0].x - patch.hypothesis_tracker_->x());
+//    double delta_y = fabs(next_points[0].y - patch.hypothesis_tracker_->y());
+//    double error = sqrt(delta_x* delta_x + delta_y*delta_y);
+//    if (error > 5) {
+//      std::cerr << "Patch completely off already: HASTE: " << patch.hypothesis_tracker_->x() << ", " << patch.hypothesis_tracker_->y() << " KLT: " << next_points[0] << std::endl;
+//    }
+    const auto &[et, ex, ey] =  patch.hypothesis_tracker_->event_window().middleEvent();
+    haste::CorrelationTracker::Hypothesis bootstrapped_hypothesis {et, next_points[0].x, next_points[0].y, 0};
+
+    double v_m;
+    if (params_.haste_bootstrap_with_unit_length_of) {
+      v_m = 1;
+    } else {
+      double distance = sqrt(klt_delta_x*klt_delta_x + klt_delta_y*klt_delta_y);
+      v_m = distance / (current_image.getTimestamp() - patch.t_init_);
+    }
+
+    haste::HypothesisPatchTracker::Patch new_template;
+
+
+    // same code as in EKLT error
+    for (size_t y=0; y< haste::HypothesisPatchTracker::kPatchSize; ++y) {
+      for (size_t  x=0; x<haste::HypothesisPatchTracker::kPatchSize; ++x) {
+        double x_p = next_points[0].x + static_cast<double>(x) - haste::HypothesisPatchTracker::kPatchSizeHalf;
+        double y_p = next_points[0].y + static_cast<double>(y) - haste::HypothesisPatchTracker::kPatchSizeHalf;
+
+        // g for gradient
+        double g[2];
+        interpolator->Evaluate(y_p, x_p, g);
+
+        new_template(y, x) = v_m * cos(opt_flow_angle) * g[0] +  v_m * sin(opt_flow_angle) * g[1];
+      }
+    }
+
+    new_template = ((new_template - new_template.minCoeff()) / (new_template.maxCoeff() - new_template.minCoeff())).matrix();
+
+    patch.hypothesis_tracker_->initializeTrackerWithTemplate(new_template, bootstrapped_hypothesis);
     patch.initialized_ = true;
   }
 }
@@ -236,8 +298,10 @@ HypothesisTrackerPtr HasteTracker::createHypothesisTracker(double t, double x, d
 
 
 void HasteTracker::onNewImageReceived() {
-  // bootstrap patches that need to be due to new image
-  bootstrapAllPossiblePatches(patches_, current_image_it_);
+  if (params_.haste_bootstrap_from_frames) {
+    // bootstrap patches that need to be due to new image
+    bootstrapAllPossiblePatches(patches_, current_image_it_);
+  }
 
   // replenish features if there are too few
   if (lost_indices_.size() > static_cast<size_t>(params_.haste_max_corners - params_.haste_min_corners))

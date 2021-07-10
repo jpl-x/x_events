@@ -83,6 +83,7 @@ class HypothesisPatchTracker {
                                  const Weight &weight = 1.0) const -> Patch;
   auto eventWindowToModelVector(const EventWindow &event_window, const Hypothesis &hypothesis,
                                 const EventWindowVector<Weight> &weights) const -> Patch;
+  auto initializeTrackerWithTemplate(const Patch& new_template, const Hypothesis &initial_hypothesis) -> void;
   auto initializeTracker() -> void;
   auto updateHypothesesTimeFromMiddleEvent();
   auto pushEvent(const Time &et, const Location &ex, const Location &ey) -> EventUpdate;

@@ -3,6 +3,7 @@
 #include <easy/profiler.h>
 
 #include <utility>
+#include <x/eklt/utils.h>
 
 
 using namespace x;
@@ -45,31 +46,7 @@ void Optimizer::decrementCounter(double time) {
 }
 
 void Optimizer::getLogGradients(const cv::Mat &img, cv::Mat &I_x, cv::Mat &I_y) {
-  // compute log gradients of image
-  const double &log_eps = params_.eklt_log_eps;
-  cv::Mat log_image;
-
-  if (params_.eklt_use_linlog_scale) {
-    const uint8_t threshold = 20;
-
-    cv::Mat mask = img > threshold;
-
-    cv::Mat lin_image, img_float;
-    img.convertTo(img_float, CV_64F, 1.0);
-
-    log_image = cv::Mat::ones(img.size(), CV_64F) * threshold;
-    img_float.copyTo(log_image, mask);
-    cv::log(log_image, log_image);
-    img.convertTo(lin_image, CV_64F, 1.0 / threshold * log(threshold));
-    lin_image.copyTo(log_image, ~mask);
-  } else {
-    cv::Mat normalized_image;
-    img.convertTo(normalized_image, CV_64F, 1.0 / 255.0);
-    cv::log(normalized_image + log_eps, log_image);
-  }
-
-  cv::Sobel(log_image / 8, I_x, CV_64F, 1, 0, 3);
-  cv::Sobel(log_image / 8, I_y, CV_64F, 0, 1, 3);
+  computeLogImgGradients(img, I_x, I_y, params_.eklt_log_eps, params_.eklt_use_linlog_scale);
 }
 
 void Optimizer::precomputeLogImageArray(const EkltPatches &patches, const ImageBuffer::iterator &image_it) {

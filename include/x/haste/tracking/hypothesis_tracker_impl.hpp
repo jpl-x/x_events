@@ -88,11 +88,42 @@ auto HypothesisPatchTracker::eventWindowToModelVector(const EventWindow &event_w
   return model;
 }
 
+// for debug:
+//#include <opencv2/core/eigen.hpp>
+
 auto HypothesisPatchTracker::initializeTracker() -> void {
   status_ = TrackerStatus::kRunning;
   const auto &[et, ex, ey] = event_window_.middleEvent();
   Hypothesis initial_hypothesis{et, x(), y(), theta()};
   template_ = eventWindowToModel(event_window_, initial_hypothesis);
+
+// for debug:
+//
+//  // normalize for visualization
+//  Eigen::Matrix<Scalar, -1, -1> matrix =
+//    ((template_ - template_.minCoeff()) / (template_.maxCoeff() - template_.minCoeff())).matrix();
+//  cv::Mat cv_img;
+//  cv::eigen2cv(matrix, cv_img);
+//
+//  volatile cv::Mat cv_img_dbg = cv_img;
+
+  transitionToHypothesis(initial_hypothesis);
+}
+
+auto HypothesisPatchTracker::initializeTrackerWithTemplate(const Patch& new_template, const Hypothesis &initial_hypothesis) -> void {
+  status_ = TrackerStatus::kRunning;
+  template_ = new_template;
+
+// for debug:
+//
+//  // normalize for visualization
+//  Eigen::Matrix<Scalar, -1, -1> matrix =
+//    ((template_ - template_.minCoeff()) / (template_.maxCoeff() - template_.minCoeff())).matrix();
+//  cv::Mat cv_img;
+//  cv::eigen2cv(matrix, cv_img);
+//
+//  volatile cv::Mat cv_img_dbg = cv_img;
+
   transitionToHypothesis(initial_hypothesis);
 }
 
