@@ -89,6 +89,7 @@ namespace x
   enum class AsyncFrontendUpdateTimestamp : char {
     PATCH_AVERAGE,
     PATCH_MAXIMUM,
+    LATEST_EVENT_TS,
   };
 
   enum class EkltPatchTimestampAssignment : char {

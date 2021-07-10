@@ -25,7 +25,7 @@ namespace x {
     Feature interpolatePatchToTime(const AsyncPatch* patch, double t);
 
     MatchList getMatchListFromPatches(const std::vector<AsyncPatch *>& active_patches,
-                                      std::vector<AsyncPatch *>& detected_outliers);
+                                      std::vector<AsyncPatch *>& detected_outliers, double latest_event_ts);
 
     void setParams(const AsyncFrontendParams& params) {
       params_ = params;
@@ -51,7 +51,7 @@ namespace x {
 
     Feature createUndistortedFeature(double t, double x, double y) const;
 
-    double getInterpolationTime(const std::vector<AsyncPatch *>& active_patches) const;
+    double getInterpolationTime(const std::vector<AsyncPatch *>& active_patches, double latest_event_ts) const;
 
     /**
      * Assigns previous feature to f_prev, if found for patch p. Under nominal conditions this is simply reading from
