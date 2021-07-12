@@ -61,6 +61,7 @@ namespace x
   enum class DistortionModel : char {
     FOV,
     RADIAL_TANGENTIAL,
+    EQUIDISTANT,
   };
 
   enum class EkltEkfFeatureInterpolation : char {

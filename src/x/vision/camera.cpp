@@ -15,6 +15,7 @@
  */
 
 #include <x/vision/camera.h>
+#include <x/vision/camera_models.h>
 
 using namespace x;
 
@@ -43,6 +44,12 @@ Camera::Camera(double fx,
   inv_fy_ = 1.0 / fy_;
   cx_n_ = cx_ * inv_fx_;
   cy_n_ = cy_ * inv_fy_;
+
+  if (distortion_model == DistortionModel::FOV) {
+    // ZE undistortion code needs this term at index 1
+    double tan_s_half_x2 = 2.0 * std::tan(distortion_parameters_[0] / 2.0);
+    distortion_parameters_.push_back(tan_s_half_x2);
+  }
 
   calculateBearingLUT();
   calculateKeypointLUT();
@@ -81,101 +88,26 @@ double Camera::getCyN() const
 void Camera::undistort(const cv::Point2d &input, cv::Point2d &undistorted_output) const {
   EASY_FUNCTION();
 
-  const double cam_dist_x = input.x * inv_fx_ - cx_n_;
-  const double cam_dist_y = input.y * inv_fy_ - cy_n_;
+  // change to centered normalized pixel coordinates
+  double px[2];
+  px[0] = input.x * inv_fx_ - cx_n_;
+  px[1] = input.y * inv_fy_ - cy_n_;
 
-  const double dist_r = sqrt(cam_dist_x * cam_dist_x + cam_dist_y * cam_dist_y);
-
-  double xn;
-  double yn;
-
-  switch(distortion_model_) {
-    case DistortionModel::FOV: {
-      const double& s = distortion_parameters_[0];
-      const double s_term = 1.0 / ( 2.0 * std::tan(s / 2.0) );
-
-      double distortion_factor = 1.0;
-      if(dist_r > 0.01 && s!= 0.0) {
-        distortion_factor = std::tan(dist_r * s) * s_term / dist_r;
-      }
-      xn = distortion_factor * cam_dist_x;
-      yn = distortion_factor * cam_dist_y;
-
+  switch (distortion_model_) {
+    case DistortionModel::FOV:
+      ze::FovDistortion::undistort(distortion_parameters_.data(), px);
       break;
-    }
-    case DistortionModel::RADIAL_TANGENTIAL: {
-      // @see https://github.com/ethz-asl/image_undistort/blob/master/src/undistorter.cpp
-      // Split out parameters for easier reading
-      const double& k1 = distortion_parameters_[0];
-      const double& k2 = distortion_parameters_[1];
-//      const double& k3 = distortion_parameters_[4];
-      const double& p1 = distortion_parameters_[2];
-      const double& p2 = distortion_parameters_[3];
-
-      xn = cam_dist_x;
-      yn = cam_dist_y;
-
-      // See https://github1s.com/uzh-rpg/ze_oss/blob/HEAD/ze_cameras/include/ze/cameras/camera_models.hpp
-
-      // do at most 30 iterations
-      for(int i = 0; i < 30; ++i)
-      {
-        // distort x and y
-        double x = xn;
-        double y = yn;
-
-        const double r2 = x * x + y * y;
-
-        const double xy = x * y;
-        const double cdist = (k1 + k2 * r2) * r2;
-
-        x += (x * cdist + p1 * 2.0 * xy + p2 * (r2 + 2.0 * x * x));
-        y += (y * cdist + p2 * 2.0 * xy + p1 * (r2 + 2.0 * y * y));
-
-        // reprojection error: distorted xn --> x SHOULD BE EQUAL TO distorted x
-        const double e_u = cam_dist_x - x;
-        const double e_v = cam_dist_y - y;
-
-        // calculate jacobian (a = J_00, b = J_10, d = J_11) and  J_10 = J_01
-        const double k2_r2_x4 = k2 * r2 * 4.0;
-        const double cdist_p1 = cdist + 1.0;
-        double a = cdist_p1 + k1 * 2.0 * x * x + k2_r2_x4 * x * x + 2.0 * p1 * y + 6.0 * p2 * x;
-        double b = 2.0 * k1 * xy + k2_r2_x4 * xy + 2.0 * p1 * x + 2.0 * p2 * y;
-        double d = cdist_p1 + k1 * 2.0 * y * y + k2_r2_x4 * y * y + 2.0 * p2 * x + 6.0 * p1 * y;
-
-        // direct gauss newton step
-        const double a_sqr = a * a;
-        const double b_sqr = b * b;
-        const double d_sqr = d * d;
-        const double abbd = a * b + b * d;
-        const double abbd_sqr = abbd * abbd;
-        const double a2b2 = a_sqr + b_sqr;
-        const double a2b2_inv = 1.0/a2b2;
-        const double adabdb = a_sqr * d_sqr - 2 * a * b_sqr * d + b_sqr * b_sqr;
-        const double adabdb_inv = 1.0 / adabdb;
-        const double c1 = abbd * adabdb_inv;
-
-        xn += e_u * (a * (abbd_sqr * a2b2_inv * adabdb_inv + a2b2_inv) - b * c1) + e_v * (b * (abbd_sqr * a2b2_inv * adabdb_inv + a2b2_inv) - d * c1);
-        yn += e_u * (-a * c1 + b * a2b2 * adabdb_inv) + e_v * (-b * c1 + d * a2b2 * adabdb_inv);
-
-        // stop if reprojection error is small enough
-        if ((e_u * e_u + e_v * e_v) < 1e-8)
-        {
-          break;
-        }
-      }
-
+    case DistortionModel::RADIAL_TANGENTIAL:
+      ze::RadialTangentialDistortion::undistort(distortion_parameters_.data(), px);
       break;
-    }
-    default: {
-      std::ostringstream message;
-      message << "Distortion model not implemented - model: " << static_cast<int>(distortion_model_);
-      throw std::runtime_error(message.str());
-    }
+    case DistortionModel::EQUIDISTANT:
+      ze::EquidistantDistortion::undistort(distortion_parameters_.data(), px);
+      break;
   }
 
-  undistorted_output.x = xn * fx_ + cx_;
-  undistorted_output.y = yn * fy_ + cy_;
+  // change back to actual pixel values
+  undistorted_output.x = px[0] * fx_ + cx_;
+  undistorted_output.y = px[1] * fy_ + cy_;
 }
 
 void Camera::undistortFeatures(FeatureList& features) const
@@ -370,46 +302,25 @@ void Camera::calculateKeypointLUT()
 
 void Camera::distort(const cv::Point2d &input, cv::Point2d &distorted_output) const
 {
-  const double x = input.x;
-  const double y = input.y;
+  // change to centered normalized pixel coordinates
+  double px[2];
+  px[0] = input.x * inv_fx_ - cx_n_;
+  px[1] = input.y * inv_fy_ - cy_n_;
 
-  const double xx = x * x;
-  const double yy = y * y;
-  const double r_sq = xx + yy;
+  switch (distortion_model_) {
 
-  switch(distortion_model_) {
-    case DistortionModel::FOV: {
-      const double& s = distortion_parameters_[0];
-      const double s_term = ( 2.0 * std::tan(s / 2.0) );
-      const double rad = std::sqrt(r_sq);
-      const double factor = ((rad < 0.001)||(s == 0.0)) ? 1.0 : std::atan(rad * s_term) / (s * rad);
-
-      distorted_output.x = x * factor;
-      distorted_output.y = y * factor;
-
+    case DistortionModel::FOV:
+      ze::FovDistortion::distort(distortion_parameters_.data(), px);
       break;
-      }
-    case DistortionModel::RADIAL_TANGENTIAL: {
-      // @see https://github.com/ethz-asl/image_undistort/blob/master/src/undistorter.cpp
-      // Split out parameters for easier reading
-      const double &k1 = distortion_parameters_[0];
-      const double &k2 = distortion_parameters_[1];
-      //const double &k3 = distortion_parameters_[4];
-      const double &p1 = distortion_parameters_[2];
-      const double &p2 = distortion_parameters_[3];
-
-      const double xy = x * y;
-      const double cdist = (k1 + k2 * r_sq) * r_sq;
-
-      distorted_output.x = x + (x * cdist + p1 * 2.0 * xy + p2 * (r_sq + 2.0 * xx));
-      distorted_output.y = y + (y * cdist + p2 * 2.0 * xy + p1 * (r_sq + 2.0 * yy));
-
+    case DistortionModel::RADIAL_TANGENTIAL:
+      ze::RadialTangentialDistortion::distort(distortion_parameters_.data(), px);
       break;
-    }
-    default: {
-      std::ostringstream message;
-      message << "Distortion model not implemented - model: " << static_cast<int>(distortion_model_);
-      throw std::runtime_error(message.str());
-    }
+    case DistortionModel::EQUIDISTANT:
+      ze::EquidistantDistortion::distort(distortion_parameters_.data(), px);
+      break;
   }
+
+  // change back to actual pixel values
+  distorted_output.x = px[0] * fx_ + cx_;
+  distorted_output.y = px[1] * fy_ + cy_;
 }
