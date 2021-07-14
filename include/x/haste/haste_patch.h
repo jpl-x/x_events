@@ -27,8 +27,8 @@ namespace x {
       , lost_(false)
       , initialized_(false) {
 
-      patch_size_ = params.eklt_patch_size;
-      half_size_ = (params.eklt_patch_size - 1) / 2;
+      patch_size_ = params.haste_patch_size;
+      half_size_ = (params.haste_patch_size - 1) / 2;
 
       reset(init_center_, t_init);
     }
