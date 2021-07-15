@@ -142,6 +142,7 @@ set (SOURCE
   src/x/vio/slam_update.cpp
   src/x/vio/range_update.cpp
   src/x/vio/solar_update.cpp
+  src/x/vio/tools.cpp
   src/x/vision/utils.cpp
   src/x/vision/camera.cpp
   src/x/vision/feature.cpp

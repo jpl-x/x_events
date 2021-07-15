@@ -19,6 +19,19 @@
 
 #include <x/vio/types.h>
 
+namespace x {
+  /*
+   * String to ENUM conversion functions (not sure if this is the right header, but instead of adding yet
+   * another ~utils.h~ I placed it here (FM)).
+   */
+  x::DistortionModel stringToDistortionModel(std::string& dist_model);
+  x::AsyncFrontendFeatureInterpolation stringToInterpolationStrategy(std::string& strategy);
+  x::AsyncFrontendUpdateTimestamp stringToEkfUpdateTimestamp(std::string& ekf_update_timestamp);
+  x::AsyncFrontendUpdateStrategy stringToEkfUpdateStrategy(std::string& ekf_update_strategy);
+  x::EkltPatchTimestampAssignment stringToEkltPatchTimestampAssignment(std::string& patch_timestamp_assignment);
+  x::HasteTrackerType stringToHasteTrackerType(std::string& haste_tracker_type);
+}
+
 namespace x
 {
 template <typename Derived>
