@@ -194,7 +194,7 @@ namespace ze {
       const T s = params[0];
       const T tan_s_half_x2 = params[1];
       const T rad = std::sqrt(px[0] * px[0] + px[1] * px[1]);
-      const T factor = (rad < 0.001) ? 1.0 : (std::tan(rad * s) / tan_s_half_x2) / rad;
+      const T factor = (rad < 0.001 || s == 0.0) ? 1.0 : (std::tan(rad * s) / tan_s_half_x2) / rad;
       px[0] *= factor;
       px[1] *= factor;
     }
