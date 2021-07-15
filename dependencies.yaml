@@ -1,21 +1,34 @@
 repositories:
   easy_profiler_catkin:
     type: git
-    url: git@fornat1.jpl.nasa.gov:florianm/easy_profiler_catkin.git
+    url: git@fornat1.jpl.nasa.gov:x/x_external/x_easy_profiler_catkin.git
+    version: master
+  eigen_catkin:
+    type: git
+    url: git@fornat1.jpl.nasa.gov:x/x_external/x_eigen_catkin.git
     version: master
   ceres_catkin:
     type: git
     url: git@github.com:ethz-asl/ceres_catkin.git
     version: master
-  suitesparse:
-    type: git
-    url: git@github.com:ethz-asl/suitesparse.git
-    version: master
+
+  # needed to build eigen_catkin and x_easy_profiler_catkin
   catkin_simple:
     type: git
     url: git@github.com:catkin/catkin_simple.git
     version: master
-  glog_catkin:
-    type: git
-    url: git@github.com:ethz-asl/glog_catkin.git
-    version: master
+
+
+#  # needed to build ceres_catkin with SuiteSparse support and glogging (but it seems that it works without as well)
+#  suitesparse:
+#    type: git
+#    url: git@github.com:ethz-asl/suitesparse.git
+#    version: master
+#  gflags_catkin:
+#    type: git
+#    url: git@github.com:ethz-asl/gflags_catkin.git
+#    version: master
+#  glog_catkin:
+#    type: git
+#    url: git@github.com:ethz-asl/glog_catkin.git
+#    version: master

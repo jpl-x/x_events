@@ -73,7 +73,6 @@ find_package(catkin REQUIRED COMPONENTS
   ${OPENCV_PACKAGE}
   ceres_catkin
   eigen_catkin
-  glog_catkin
 )
 
 find_package(Eigen3 REQUIRED)
@@ -110,7 +109,7 @@ set(EIGEN3_LIBRARIES ${EIGEN3_LIBRARIES})
 # Configure this package
 catkin_package(
 	DEPENDS EIGEN3
-  INCLUDE_DIRS include ${EIGEN3_INCLUDE_DIR} ${ceres_catkin_INCLUDE_DIRS} ${glog_catkin_INCLUDE_DIRS}
+  INCLUDE_DIRS include ${EIGEN3_INCLUDE_DIR} ${ceres_catkin_INCLUDE_DIRS}
   LIBRARIES x
 )
 
@@ -161,6 +160,7 @@ set (SOURCE
   src/x/events/event_accumulator.cpp
   src/x/eklt/async_feature_tracker.cpp
   src/x/haste/haste_tracker.cpp
+  src/x/haste/haste_vio.cpp
 )
 
 add_library (x ${SOURCE})
