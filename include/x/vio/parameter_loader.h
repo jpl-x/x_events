@@ -291,6 +291,8 @@ namespace x {
       success &= getParam("haste_patch_size", params.haste_patch_size);
       success &= getParam("haste_max_corners", params.haste_max_corners);
       success &= getParam("haste_min_corners", params.haste_min_corners);
+      success &= getParam("haste_bootstrap_from_frames", params.haste_bootstrap_from_frames);
+      success &= getParam("haste_bootstrap_with_unit_length_of", params.haste_bootstrap_with_unit_length_of);
 
       success &= loadAsyncFrontendParams("haste_", params.haste_async_frontend_params, getParam);
 
