@@ -47,12 +47,13 @@ void x::AsyncFeatureTracker::extractFeatures(std::vector<cv::Point2d> &features,
     mask.rowRange(min_y, max_y).colRange(min_x, max_x).setTo(0);
   }
 
-  // extract harris corners which are suitable
-  // since they correspond to strong edges which also generate alot of events.
-  VLOG(2) << "Harris corner detector with N=" << num_patches << " quality=" << params_.detection_harris_quality_level
-          << " min_dist=" << params_.detection_min_distance << " block_size=" << params_.detection_harris_block_size << " k=" << params_.detection_harris_k
-          << " image_depth=" << image_it->second.depth() << " mask_ratio="
-          << cv::sum(mask)[0] / (mask.cols * mask.rows);
+  // TODO (Florian, Jeff): define logging policy for x, do we just use cout?
+//  // extract harris corners which are suitable
+//  // since they correspond to strong edges which also generate alot of events.
+//  VLOG(2) << "Harris corner detector with N=" << num_patches << " quality=" << params_.detection_harris_quality_level
+//          << " min_dist=" << params_.detection_min_distance << " block_size=" << params_.detection_harris_block_size << " k=" << params_.detection_harris_k
+//          << " image_depth=" << image_it->second.depth() << " mask_ratio="
+//          << cv::sum(mask)[0] / (mask.cols * mask.rows);
 
   cv::goodFeaturesToTrack(image_it->second, features, num_patches,
                           params_.detection_harris_quality_level,
@@ -61,10 +62,10 @@ void x::AsyncFeatureTracker::extractFeatures(std::vector<cv::Point2d> &features,
                           true,
                           params_.detection_harris_k);
 
-  // initialize patches centered at the features with an initial pixel warp
-  VLOG(1)
-  << "Extracted " << features.size() << " new features on image at t=" << std::setprecision(15) << image_it->first
-  << " s.";
+  // TODO (Florian, Jeff): define logging policy for x, do we just use cout?
+//  // initialize patches centered at the features with an initial pixel warp
+//  VLOG(1) << "Extracted " << features.size() << " new features on image at t=" << std::setprecision(15)
+//          << image_it->first << " s.";
 }
 
 
@@ -91,7 +92,9 @@ std::vector<x::MatchList> x::AsyncFeatureTracker::processEvents(const EventArray
   std::vector<MatchList> match_lists_for_ekf_updates;
 
   if (!got_first_image_) {
-    LOG_EVERY_N(INFO, 20) << "Events dropped since no image present.";
+    // TODO (Florian, Jeff): define logging policy for x, do we just use cout?
+//    LOG_EVERY_N(INFO, 20) << "Events dropped since no image present.";
+    std::cout << "Events dropped since no image present." << std::endl;
     return match_lists_for_ekf_updates;
   }
 
@@ -105,7 +108,8 @@ std::vector<x::MatchList> x::AsyncFeatureTracker::processEvents(const EventArray
     if (ev.ts >= most_current_time_)
       most_current_time_ = ev.ts;
     else if (fabs(ev.ts - most_current_time_) > 1e-6)  // if order wrong and spaced more than 1us
-      LOG(WARNING) << "Processing event behind most current time: " << std::setprecision(15) << ev.ts << " < " << most_current_time_ << ". Events might not be in order!";
+      // TODO (Florian, Jeff): define logging policy for x, do we just use cout?
+      std::cout << "Processing event behind most current time: " << std::setprecision(15) << ev.ts << " < " << most_current_time_ << ". Events might not be in order!" << std::endl;
 
     // go through each patch and update the event frame with the new event
     for (AsyncPatch* patch: getActivePatches()) {
@@ -174,7 +178,8 @@ void x::AsyncFeatureTracker::processImage(double timestamp, const TiledImage &cu
   images_.insert(std::make_pair(timestamp, current_img.clone()));
 
   if (!got_first_image_) {
-    VLOG(1) << "Found first image.";
+    // TODO (Florian, Jeff): define logging policy for x, do we just use cout?
+//    VLOG(1) << "Found first image.";
     current_image_it_ = images_.begin();
     most_current_time_ = current_image_it_->first;
     onInit(current_image_it_);

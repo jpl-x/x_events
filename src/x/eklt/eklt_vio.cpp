@@ -157,8 +157,8 @@ State EKLTVIO::processImageMeasurement(double timestamp,
 
 
 State EKLTVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr, TiledImage &tracker_img, TiledImage &feature_img) {
-//  std::cout << "Events at timestamps [" << std::setprecision(17) << events_ptr->events.front().ts << ", " << events_ptr->events.back().ts
-//            << "] received in xEKLTVIO class." << std::endl;
+//  std::cout << "Events at timestamps [" << std::setprecision(17) << events_ptr->events.front().ts << ", "
+//            << events_ptr->events.back().ts << "] received in xEKLTVIO class." << std::endl;
 
   auto match_lists_for_ekf_updates = eklt_tracker_.processEvents(events_ptr);
 
