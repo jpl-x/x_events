@@ -36,7 +36,7 @@ void throw_exception(std::exception const & e) {}; // user defined
 
 
 EVIO::EVIO(XVioPerformanceLoggerPtr  xvio_perf_logger)
-  : ekf_(vio_updater_)
+  : ekf_(std::make_shared<Ekf>(vio_updater_))
   , xvio_perf_logger_(std::move(xvio_perf_logger))
 {
   // Initialize with invalid last range measurement
@@ -53,7 +53,7 @@ EVIO::EVIO(XVioPerformanceLoggerPtr  xvio_perf_logger)
 }
 
 bool EVIO::isInitialized() const {
-  return ekf_.getInitStatus() == InitStatus::kInitialized;
+  return ekf_->getInitStatus() == InitStatus::kInitialized;
 }
 
 void EVIO::setUp(const x::Params& params) {
@@ -104,7 +104,7 @@ void EVIO::setUp(const x::Params& params) {
 
   // EKF setup
   const State default_state = State(n_poses_state, n_features_state);
-  ekf_.set(vio_updater_,
+  ekf_->set(vio_updater_,
            g,
            imu_noise,
            params_.state_buffer_size,
@@ -113,7 +113,7 @@ void EVIO::setUp(const x::Params& params) {
            params_.delta_seq_imu,
            params_.state_buffer_time_margin);
 
-  x::EventAccumulator event_accumulator(params_.n_events_max, params_.event_accumulation_method, params_.img_width, params_.img_height);
+  x::EventAccumulator event_accumulator(params_.n_events_max, params_.event_accumulation_method, params_.img_width, params_.img_height, ekf_);
   event_accumulator_ = event_accumulator;
 }
 
@@ -145,7 +145,7 @@ State EVIO::processImageMeasurement(double timestamp,
   vio_updater_.setMeasurement(measurement);
 
   // Process update measurement with xEKF
-  State updated_state = ekf_.processUpdateMeasurement();
+  State updated_state = ekf_->processUpdateMeasurement();
 
   // Set state timestamp to original image timestamp for ID purposes in output.
   // We don't do that if that state is invalid, since the timestamp also carries
@@ -193,7 +193,7 @@ State EVIO::processMatchesMeasurement(double timestamp,
   vio_updater_.setMeasurement(measurement);
 
   // Process update measurement with xEKF
-  State updated_state = ekf_.processUpdateMeasurement();
+  State updated_state = ekf_->processUpdateMeasurement();
 
   // Set state timestamp to original image timestamp for ID purposes in output.
   // We don't do that if that state is invalid, since the timestamp carries the
@@ -225,8 +225,8 @@ State EVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr,
   bool event_image_ready = false;
 
   // Initialize plain image to plot features on
-  cv::Mat event_img(events_ptr->height,
-                    events_ptr->width,
+  cv::Mat event_img(params_.img_height,
+                    params_.img_width,
                     CV_32FC1,
                     cv::Scalar(0.0));
 
@@ -263,7 +263,7 @@ State EVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr,
   vio_updater_.setMeasurement(measurement);
 
   // Process update measurement with xEKF
-  State updated_state = ekf_.processUpdateMeasurement();
+  State updated_state = ekf_->processUpdateMeasurement();
 
   // Set state timestamp to original image timestamp for ID purposes in output.
   // We don't do that if that state is invalid, since the timestamp also carries
@@ -290,7 +290,7 @@ EVIO::computeSLAMCartesianFeaturesForState(
 }
 
 void EVIO::initAtTime(double now) {
-  ekf_.lock();
+  ekf_->lock();
   vio_updater_.track_manager_.clear();
   vio_updater_.state_manager_.clear();
 
@@ -349,7 +349,7 @@ void EVIO::initAtTime(double now) {
 
   // Try to initialize the filter with initial state input
   try {
-    ekf_.initializeFromState(init_state);
+    ekf_->initializeFromState(init_state);
   } catch (std::runtime_error& e) {
     std::cerr << "bad input: " << e.what() << std::endl;
   } catch (init_bfr_mismatch) {
@@ -357,7 +357,7 @@ void EVIO::initAtTime(double now) {
                  "initialization state match must match the size allocated in "
                  "the buffered states." << std::endl;
   }
-  ekf_.unlock();
+  ekf_->unlock();
 }
 
 /** \brief Gets 3D coordinates of MSCKF inliers and outliers.
@@ -374,7 +374,7 @@ State EVIO::processImu(const double timestamp,
                       const unsigned int seq,
                       const Vector3& w_m,
                       const Vector3& a_m) {
-  return ekf_.processImu(timestamp, seq, w_m, a_m);
+  return ekf_->processImu(timestamp, seq, w_m, a_m);
 }
 
 x::MatchList EVIO::importMatches(const std::vector<double>& match_vector,

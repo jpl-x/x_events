@@ -220,3 +220,53 @@ bool Ekf::repropagateFromStateAtIdx(const State& state, const int idx) {
 InitStatus Ekf::getInitStatus() const {
   return init_status_;
 }
+
+State Ekf::getClosestState(const double timestamp) const {
+  int index = state_buffer_.closestIdx(timestamp);
+  if (index >= 0) {
+    return state_buffer_[index];
+  } else {
+    return State();
+  }
+}
+
+/*State Ekf::getNewestState() const {
+  int index = state_buffer_.getTailIdx();
+  if (index >= 0) {
+    return state_buffer_[index];
+  } else {
+    return State();
+  }
+}*/
+
+double Ekf::calculateInverseDepthAverage(const double t_start, const double t_end) const {
+  double inverse_depth_average = 0.0;
+  int index_start = state_buffer_.closestIdx(t_start);
+  int index_end = state_buffer_.closestIdx(t_end);
+  int state_index = index_start;
+  int num_states = 0;
+
+  while (state_index != index_end) {
+    State state = state_buffer_[state_index];
+    double state_inverse_depth_average = 0.0;
+    int j = 0;
+    for(int i = 0; i < state.f_array_.size()/3; i++) {
+      if (state.f_array_(3*i+2, 0) != 0) {
+        state_inverse_depth_average = state_inverse_depth_average * (j / (j+1.0)) + state.f_array_(3*i+2, 0) * (1.0/(j+1));
+        j++;
+      }
+
+    }
+    state_index = state_buffer_.nextIdx(state_index);
+    if (state_inverse_depth_average != 0)
+    {
+      num_states++;
+      inverse_depth_average += state_inverse_depth_average;
+    }
+  }
+  if (num_states > 0) {
+    return inverse_depth_average / num_states;
+  } else {
+    return 0.0;
+  }
+}

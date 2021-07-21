@@ -138,6 +138,20 @@ namespace x {
        */
       InitStatus getInitStatus() const;
 
+      /**
+      * Getter
+      * @return state from state buffer closest to timestamp
+      */
+      State getClosestState(const double timestamp) const;
+
+      /**
+      * Getter
+      * @return state from state buffer closest to timestamp
+      */
+      /*State getNewestState() const;*/
+
+      double calculateInverseDepthAverage(const double t_start, const double t_end) const;
+
     private:
       /**
        * State and covariance propagator.
