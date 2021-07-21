@@ -1,13 +1,14 @@
 //
-// Created by Florian Mahlknecht on 2021-03-01.
+// Created by Florian Mahlknecht on 2021-07-05.
 // Copyright (c) 2021 NASA / JPL. All rights reserved.
-//
 
-#include <x/eklt/eklt_vio.h>
+
+
+#include <x/haste/haste_vio.h>
+
+
 #include <x/vio/tools.h>
 #include <x/vision/types.h>
-
-#include <x/eklt/eklt_tracker.h>
 
 #include <iostream>
 
@@ -25,19 +26,18 @@ namespace boost {
 }
 
 
-EKLTVIO::EKLTVIO(XVioPerformanceLoggerPtr xvio_perf_logger, EventsPerformanceLoggerPtr events_perf_logger,  EkltPerformanceLoggerPtr eklt_perf_logger)
+HASTEVIO::HASTEVIO(XVioPerformanceLoggerPtr xvio_perf_logger, EventsPerformanceLoggerPtr events_perf_logger)
   : ekf_{Ekf(vio_updater_)}
   , msckf_baseline_n_(-1.0)
-  , eklt_viewer_()
-  , eklt_tracker_(x::Camera(), eklt_viewer_, x::Params(), std::move(events_perf_logger), std::move(eklt_perf_logger))
+  , haste_tracker_(x::Camera(), x::Params(), std::move(events_perf_logger))
   , xvio_perf_logger_(std::move(xvio_perf_logger)) {
 }
 
-bool EKLTVIO::isInitialized() const {
+bool HASTEVIO::isInitialized() const {
   return ekf_.getInitStatus() == InitStatus::kInitialized;
 }
 
-void EKLTVIO::setUp(const x::Params &params) {
+void HASTEVIO::setUp(const x::Params &params) {
   const x::Camera cam(params.cam_fx, params.cam_fy, params.cam_cx, params.cam_cy, params.cam_distortion_model,
                       params.cam_distortion_parameters, params.img_width, params.img_height);
   const x::Tracker tracker(cam, params.fast_detection_delta, params.non_max_supp, params.block_half_length,
@@ -55,10 +55,10 @@ void EKLTVIO::setUp(const x::Params &params) {
   track_manager_ = track_manager;
 
   // sets also EKLT params in viewer and optimizer class
-  eklt_tracker_.setParams(params);
-  eklt_tracker_.setCamera(camera_);
+  haste_tracker_.setParams(params);
+  haste_tracker_.setCamera(camera_);
 
-  // Set up EKLTVIO state manager
+  // Set up VIO state manager
   const int n_poses_state = params.n_poses_max;
   const int n_features_state = params.n_slam_features_max;
   const StateManager state_manager(n_poses_state, n_features_state);
@@ -98,15 +98,15 @@ void EKLTVIO::setUp(const x::Params &params) {
            params_.state_buffer_time_margin);
 }
 
-void EKLTVIO::setLastRangeMeasurement(x::RangeMeasurement range_measurement) {
+void HASTEVIO::setLastRangeMeasurement(x::RangeMeasurement range_measurement) {
   last_range_measurement_ = range_measurement;
 }
 
-void EKLTVIO::setLastSunAngleMeasurement(x::SunAngleMeasurement angle_measurement) {
+void HASTEVIO::setLastSunAngleMeasurement(x::SunAngleMeasurement angle_measurement) {
   last_angle_measurement_ = angle_measurement;
 }
 
-State EKLTVIO::processImageMeasurement(double timestamp,
+State HASTEVIO::processImageMeasurement(double timestamp,
                                        const unsigned int seq,
                                        TiledImage &match_img,
                                        TiledImage &feature_img) {
@@ -116,7 +116,7 @@ State EKLTVIO::processImageMeasurement(double timestamp,
 
   // Track features
   auto match_image_tracker_copy = match_img.clone();
-  eklt_tracker_.processImage(timestamp_corrected, match_image_tracker_copy);
+  haste_tracker_.processImage(timestamp_corrected, match_image_tracker_copy);
   //  tracker_.track(match_image_tracker_copy, timestamp_corrected, seq);
 
   // EKLT does not provide an update from images
@@ -156,11 +156,11 @@ State EKLTVIO::processImageMeasurement(double timestamp,
 }
 
 
-State EKLTVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr, TiledImage &tracker_img, TiledImage &feature_img) {
-//  std::cout << "Events at timestamps [" << std::setprecision(17) << events_ptr->events.front().ts << ", "
-//            << events_ptr->events.back().ts << "] received in xEKLTVIO class." << std::endl;
+State HASTEVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_ptr, TiledImage &tracker_img, TiledImage &feature_img) {
+//  std::cout << "Events at timestamps [" << std::setprecision(17) << events_ptr->events.front().ts << ", " << events_ptr->events.back().ts
+//            << "] received in xHASTEVIO class." << std::endl;
 
-  auto match_lists_for_ekf_updates = eklt_tracker_.processEvents(events_ptr);
+  auto match_lists_for_ekf_updates = haste_tracker_.processEvents(events_ptr);
 
   auto most_recent_state = State();
 
@@ -170,7 +170,7 @@ State EKLTVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_pt
     if (matches.empty())
       continue;
 
-    auto match_img = eklt_tracker_.getCurrentImage().clone();
+    auto match_img = haste_tracker_.getCurrentImage().clone();
 
     const auto timestamp = matches.back().current.getTimestamp();
 
@@ -193,7 +193,7 @@ State EKLTVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_pt
     most_recent_state.setTime(most_recent_timestamp);
 
     // Populate GUI image outputs
-    eklt_tracker_.renderVisualization(tracker_img);
+//    haste_tracker_.renderVisualization(tracker_img);
     feature_img = vio_updater_.getFeatureImage();
   }
 
@@ -203,12 +203,12 @@ State EKLTVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_pt
 /** Calls the state manager to compute the cartesian coordinates of the SLAM features.
  */
 std::vector<Eigen::Vector3d>
-EKLTVIO::computeSLAMCartesianFeaturesForState(
+HASTEVIO::computeSLAMCartesianFeaturesForState(
   const State &state) {
   return vio_updater_.state_manager_.computeSLAMCartesianFeaturesForState(state);
 }
 
-void EKLTVIO::initAtTime(double now) {
+void HASTEVIO::initAtTime(double now) {
   ekf_.lock();
   vio_updater_.track_manager_.clear();
   vio_updater_.state_manager_.clear();
@@ -239,11 +239,11 @@ void EKLTVIO::initAtTime(double now) {
   const size_t n_err = kSizeCoreErr + n_poses_state * 6 + n_features_state * 3;
   Eigen::VectorXd sigma_diag(n_err);
   sigma_diag << params_.sigma_dp,
-                params_.sigma_dv,
-                params_.sigma_dtheta * M_PI / 180.0,
-                params_.sigma_dbw * M_PI / 180.0,
-                params_.sigma_dba,
-                sigma_p_array, sigma_q_array, sigma_f_array;
+    params_.sigma_dv,
+    params_.sigma_dtheta * M_PI / 180.0,
+    params_.sigma_dbw * M_PI / 180.0,
+    params_.sigma_dba,
+    sigma_p_array, sigma_q_array, sigma_f_array;
 
   const Eigen::VectorXd cov_diag = sigma_diag.array() * sigma_diag.array();
   const Matrix cov = cov_diag.asDiagonal();
@@ -283,13 +283,13 @@ void EKLTVIO::initAtTime(double now) {
  *
  *  These are computed in the Measurement class instance.
  */
-void EKLTVIO::getMsckfFeatures(x::Vector3dArray &inliers,
+void HASTEVIO::getMsckfFeatures(x::Vector3dArray &inliers,
                                x::Vector3dArray &outliers) {
   inliers = vio_updater_.getMsckfInliers();
   outliers = vio_updater_.getMsckfOutliers();
 }
 
-State EKLTVIO::processImu(const double timestamp,
+State HASTEVIO::processImu(const double timestamp,
                           const unsigned int seq,
                           const Vector3 &w_m,
                           const Vector3 &a_m) {

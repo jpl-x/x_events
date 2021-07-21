@@ -184,6 +184,7 @@ namespace x {
     void applyQRDecomposition(Matrix &h, Matrix &res, Matrix &R);
 
     friend class EKLTVIO;
+    friend class HASTEVIO;
   };
 
 

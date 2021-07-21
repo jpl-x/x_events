@@ -18,11 +18,6 @@ project(x)
 
 set(CMAKE_BUILD_TYPE Release)
 
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Og") # REMOVE ME LATER
-
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Og -fno-omit-frame-pointer -fsanitize=address") # REMOVE ME LATER
-#set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -g -Og -fno-omit-frame-pointer -fsanitize=address") # REMOVE ME LATER
-
 # Set definitions
 if(DUAL_THREAD)
   add_definitions(-DDUAL_THREAD)
@@ -70,7 +65,6 @@ find_package(catkin REQUIRED COMPONENTS
   ${OPENCV_PACKAGE}
   ceres_catkin
   eigen_catkin
-  glog_catkin
 )
 
 find_package(Eigen3 REQUIRED)
@@ -100,6 +94,15 @@ if (CMAKE_BUILD_TYPE MATCHES Release)
 
 endif()
 
+# build with catkin build x --cmake-args -DMY_DEBUG=1
+if (MY_DEBUG)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Og")
+endif()
+
+## For debugging memory leaks
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Og -fno-omit-frame-pointer -fsanitize=address") # REMOVE ME LATER
+#set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -g -Og -fno-omit-frame-pointer -fsanitize=address") # REMOVE ME LATER
+
 # For downstream packages in catkin
 set(EIGEN3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
 set(EIGEN3_LIBRARIES ${EIGEN3_LIBRARIES})
@@ -107,7 +110,7 @@ set(EIGEN3_LIBRARIES ${EIGEN3_LIBRARIES})
 # Configure this package
 catkin_package(
 	DEPENDS EIGEN3
-  INCLUDE_DIRS include ${EIGEN3_INCLUDE_DIR} ${ceres_catkin_INCLUDE_DIRS} ${glog_catkin_INCLUDE_DIRS}
+  INCLUDE_DIRS include ${EIGEN3_INCLUDE_DIR} ${ceres_catkin_INCLUDE_DIRS}
   LIBRARIES x
 )
 
@@ -139,6 +142,7 @@ set (SOURCE
   src/x/vio/slam_update.cpp
   src/x/vio/range_update.cpp
   src/x/vio/solar_update.cpp
+  src/x/vio/tools.cpp
   src/x/vision/utils.cpp
   src/x/vision/camera.cpp
   src/x/vision/feature.cpp
@@ -155,6 +159,9 @@ set (SOURCE
   src/x/eklt/types.cpp
   src/x/events/e_vio.cpp
   src/x/events/event_accumulator.cpp
+  src/x/eklt/async_feature_tracker.cpp
+  src/x/haste/haste_tracker.cpp
+  src/x/haste/haste_vio.cpp
 )
 
 add_library (x ${SOURCE})

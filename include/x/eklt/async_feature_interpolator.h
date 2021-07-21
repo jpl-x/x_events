@@ -19,14 +19,15 @@ namespace x {
 
   class AsyncFeatureInterpolator {
   public:
-    AsyncFeatureInterpolator(x::Params  params, x::Camera  cam)
-    : camera_(std::move(cam)), params_(std::move(params)) {}
+    AsyncFeatureInterpolator(x::AsyncFrontendParams params, x::Camera  cam)
+    : camera_(std::move(cam)), params_(params) {}
 
     Feature interpolatePatchToTime(const AsyncPatch* patch, double t);
 
-    MatchList getMatchListFromPatches(std::vector<const AsyncPatch *> active_patches);
+    MatchList getMatchListFromPatches(const std::vector<AsyncPatch *>& active_patches,
+                                      std::vector<AsyncPatch *>& detected_outliers, double latest_event_ts);
 
-    void setParams(const Params& params) {
+    void setParams(const AsyncFrontendParams& params) {
       params_ = params;
     }
 
@@ -36,8 +37,12 @@ namespace x {
 
   private:
     x::Camera camera_;
-    x::Params params_;
+    x::AsyncFrontendParams params_;
     std::map<int, x::Feature> previous_features_;
+    /**
+     * Minimum time gap between consecutive interpolation timestamps (ensures monotonically increasing update timestamps)
+     */
+    const double time_eps_ = 1e-6;
     double previous_time_ = kInvalid;
 
     inline bool isFeatureOutOfView(const Feature& f) const {
@@ -46,7 +51,7 @@ namespace x {
 
     Feature createUndistortedFeature(double t, double x, double y) const;
 
-    double getInterpolationTime(std::vector<const AsyncPatch *> &active_patches) const;
+    double getInterpolationTime(const std::vector<AsyncPatch *>& active_patches, double latest_event_ts) const;
 
     /**
      * Assigns previous feature to f_prev, if found for patch p. Under nominal conditions this is simply reading from
@@ -58,13 +63,6 @@ namespace x {
      * @return true on success, false otherwise
      */
     bool setPreviousFeature(const x::AsyncPatch* p, x::Feature& f_prev, double t_cur);
-
-    /**
-     * Removes outliers if enabled in EKLT parameters
-     * @param matches
-     * @return
-     */
-    MatchList refineMatches(MatchList &matches) const;
   };
 
 

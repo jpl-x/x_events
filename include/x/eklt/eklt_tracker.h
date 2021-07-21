@@ -7,12 +7,11 @@
 #include <mutex>
 #include <fstream>
 #include <x/vision/camera.h>
-
-#include "eklt_patch.h"
-#include "optimizer.h"
-#include "viewer.h"
-#include "async_patch.h"
-#include "async_feature_interpolator.h"
+#include <x/eklt/eklt_patch.h>
+#include <x/eklt/optimizer.h>
+#include <x/eklt/async_feature_tracker.h>
+#include <x/eklt/viewer.h>
+#include <x/eklt/async_feature_interpolator.h>
 
 
 namespace x {
@@ -22,78 +21,57 @@ namespace x {
  * forming an event-frame-patch are used as observations and tracked versus the image gradient in the patch
  * at initialization.
  */
-  class EkltTracker {
+  class EkltTracker : public AsyncFeatureTracker {
   public:
     explicit EkltTracker(Camera camera, Viewer &viewer, Params params = {},
-                         EkltPerformanceLoggerPtr perf_logger = nullptr);
+                         EventsPerformanceLoggerPtr event_perf_logger = nullptr,
+                         EkltPerformanceLoggerPtr eklt_perf_logger = nullptr);
 
-    /**
-     * @brief updates the EKLT parameters in the tracker as well as in the associated viewer and optimizer
-     */
-    void setParams(const Params& params);
-
-    void setPerfLogger(const EkltPerformanceLoggerPtr& perf_logger);
-
-    void setCamera(const x::Camera& camera) {
-      interpolator_.setCamera(camera);
+    void setParams(const Params &params) {
+      params_ = params;
+      setAsyncFrontendParams(params.eklt_async_frontend_params);
+      viewer_ptr_->setParams(params);
+      optimizer_.setParams(params);
     }
 
 
-    std::vector<const AsyncPatch* > getActivePatches() {
-      std::vector<const AsyncPatch* > ret;
+    std::vector<AsyncPatch *> getActivePatches() override {
+      std::vector<AsyncPatch *> ret;
       ret.reserve(patches_.size()); // prepare for best case
-      for (const auto& p : patches_)
+      for (auto &p : patches_)
         if (!p.lost_)
           ret.push_back(&p);
       return ret;
     }
 
-      /**
-     * @brief processes all events in array and returns true if matches have been updated.
+    void renderVisualization(TiledImage &tracker_debug_image_output);
+
+    /**
+     * @brief Initializes a viewer and optimizer with the first image. Also extracts first features.
+     * @param image_it CV_8U gray-scale image on which features are extracted.
      */
-      std::vector<MatchList> processEvents(const EventArray::ConstPtr &msg);
+    void onInit(const ImageBuffer::iterator &image_it) override;
 
-    // TODO why don't we use: current_img.getTimestamp(), current_img.getFrameNumber()
-    void processImage(double timestamp, TiledImage &current_img, unsigned int frame_number);
+    void onNewImageReceived() override;
 
-    TiledImage getCurrentImage() {
-      return current_image_it_->second;
-    }
+    void onPostEvent() override;
 
-    void renderVisualization(TiledImage& tracker_debug_image_output);
+
+    EkltPerformanceLoggerPtr eklt_perf_logger_;
+    Params params_;
+    Optimizer optimizer_;
+
+/**
+ * @brief update a patch with the new event, return true if patch position has been updated
+ */
+bool updatePatch(AsyncPatch &patch, const Event &event) override;
 
   private:
-    /**
-   * @brief Initializes a viewer and optimizer with the first image. Also extracts first features.
-   * @param image_it CV_8U gray-scale image on which features are extracted.
-   */
-    void init(const ImageBuffer::iterator &image_it);
-
-    /**
-    * @brief Always assigns image to the first image before time  t_start
-    */
-    inline bool updateFirstImageBeforeTime(double t_start, ImageBuffer::iterator &current_image_it) {
-      bool next_image = false;
-      auto next_image_it = current_image_it;
-
-      while (next_image_it->first < t_start) {
-        ++next_image_it;
-        if (next_image_it == images_.end())
-          break;
-
-        if (next_image_it->first < t_start) {
-          next_image = true;
-          current_image_it = next_image_it;
-        }
-      }
-
-      return next_image;
-    }
 
     /**
      * @brief checks all features if they can be bootstrapped
      */
-    void bootstrapAllPossiblePatches(Patches &patches, const ImageBuffer::iterator &image_it);
+    void bootstrapAllPossiblePatches(EkltPatches &patches, const ImageBuffer::iterator &image_it);
 
     /**
    * @brief bootstrapping features: Uses first two frames to initialize feature translation and optical flow.
@@ -111,25 +89,15 @@ namespace x {
     void addFeatures(std::vector<int> &lost_indices, const ImageBuffer::iterator &image_it);
 
     /**
-     * @brief update a patch with the new event, return true if patch position has been updated
-     */
-    bool updatePatch(EkltPatch &patch, const Event &event);
-
-    /**
      * @brief reset patches that have been lost.
      */
-    void resetPatches(Patches &new_patches, std::vector<int> &lost_indices, const ImageBuffer::iterator &image_it);
+    void resetPatches(EkltPatches &new_patches, std::vector<int> &lost_indices, const ImageBuffer::iterator &image_it);
 
     /**
      * @brief initialize corners on an image
      */
-    void initPatches(Patches &patches, std::vector<int> &lost_indices, const int &corners,
+    void initPatches(EkltPatches &patches, std::vector<int> &lost_indices, const int &corners,
                      const ImageBuffer::iterator &image_it);
-
-    /**
-     * @brief extract patches
-     */
-    void extractPatches(Patches &patches, const int &num_patches, const ImageBuffer::iterator &image_it);
 
     inline void padBorders(const cv::Mat &in, cv::Mat &out, int p) {
       out = cv::Mat(in.rows + p * 2, in.cols + p * 2, in.depth());
@@ -147,52 +115,26 @@ namespace x {
       return exceeded_error || out_of_fov;
     }
 
-    inline bool isPointOutOfView(const cv::Point2d& p) const {
-      return (p.y < 0 || p.y >= sensor_size_.height || p.x < 0 || p.x >= sensor_size_.width);
+    inline bool isPointOutOfView(const cv::Point2d &p) const {
+      return (p.y < 0 || p.y >= params_.img_height || p.x < 0 || p.x >= params_.img_width);
     }
 
     /**
      * @brief sets the number of events to process adaptively according to equation (15) in the paper
      */
-    void setBatchSize(EkltPatch &patch, const cv::Mat &I_x, const cv::Mat &I_y, const double &d);
-
-    Params params_;
-    EkltPerformanceLoggerPtr perf_logger_;
-    cv::Size sensor_size_;
-
-    // image flags
-    bool got_first_image_;
-    int events_till_next_ekf_update_ = -1;
-    double last_ekf_update_timestamp_ = -1;
-
-    // pointers to most recent image and time
-    ImageBuffer::iterator current_image_it_;
-    double most_current_time_;
-
-    ImageBuffer images_;
+    void setBatchSize(EkltPatch &patch, const double &d);
 
     // patch parameters
-    Patches patches_;
-    std::map<int, std::pair<cv::Mat, cv::Mat>> patch_gradients_;
+    EkltPatches patches_;
     std::vector<int> lost_indices_;
 
     // delegation
     Viewer *viewer_ptr_ = nullptr;
-    Optimizer optimizer_;
-    AsyncFeatureInterpolator interpolator_;
 
     int viewer_counter_ = 0;
 
-    inline void discardPatch(EkltPatch &patch) {
-      // if the patch has been lost record it in lost_indices_
-      patch.lost_ = true;
-      lost_indices_.push_back(&patch - &patches_[0]);
+    void discardPatch(AsyncPatch &async_patch) override;
 
-      if (perf_logger_)
-        perf_logger_->eklt_tracks_csv.addRow(profiler::now(), patch.getId(), EkltTrackUpdateType::Lost,
-                                             patch.getCurrentTime(), patch.getCenter().x, patch.getCenter().y,
-                                             patch.flow_angle_);
-    }
   };
 
 }

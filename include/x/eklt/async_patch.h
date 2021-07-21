@@ -7,6 +7,8 @@
 #include <x/vision/types.h>
 #include <x/vision/camera.h>
 
+#include <utility>
+
 #pragma once
 
 namespace x {
@@ -17,9 +19,16 @@ namespace x {
     // give access to track_history
     friend class AsyncFeatureInterpolator;
 
-    AsyncPatch() = default;
+    explicit AsyncPatch(EventsPerformanceLoggerPtr perf_logger) : perf_logger_(std::move(perf_logger)) {}
+    virtual ~AsyncPatch() = default;
 
     void resetTrack(double t, const cv::Point2d& center) {
+      if (perf_logger_ && track_hist_.size() > 1) {
+        // do not log single points as tracks (as they don't generate any kind of updates)
+        for (const auto& pair : track_hist_) {
+          perf_logger_->event_tracks_csv.addRow(id_, pair.first, pair.second.x, pair.second.y);
+        }
+      }
       track_hist_.clear();
       track_hist_.emplace_back(t, center);
     }
@@ -47,6 +56,7 @@ namespace x {
 
   private:
     std::vector<std::pair<double, cv::Point2d>> track_hist_;
+    EventsPerformanceLoggerPtr perf_logger_;
   };
 
 

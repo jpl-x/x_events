@@ -33,7 +33,7 @@ namespace x {
      */
     void getLogGradients(const cv::Mat &img, cv::Mat &I_x, cv::Mat &I_y);
 
-    void precomputeLogImageArray(const Patches &patches, const ImageBuffer::iterator &image_it);
+    void precomputeLogImageArray(const EkltPatches &patches, const ImageBuffer::iterator &image_it);
 
     /**
      * @brief perform optimization of cost function (7) in the original paper.

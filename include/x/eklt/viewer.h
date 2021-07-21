@@ -37,7 +37,7 @@ namespace x {
     /**
      * @brief Used to set the tracking data
      */
-    void setViewData(Patches &patches, double t,
+    void setViewData(EkltPatches &patches, double t,
                      ImageBuffer::iterator image_it);
 
   private:

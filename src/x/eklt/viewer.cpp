@@ -11,7 +11,7 @@ void Viewer::setParams(const Params &params) {
   params_ = params;
 }
 
-void Viewer::setViewData(Patches &patches, double t,
+void Viewer::setViewData(EkltPatches &patches, double t,
                          ImageBuffer::iterator image_it) {
   // copy all patches data to feature_track_data_. This is later used to generate a preview of the feature tracks.
   std::lock_guard<std::mutex> lock(data_mutex_);

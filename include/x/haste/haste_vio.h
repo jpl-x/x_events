@@ -1,14 +1,10 @@
 //
-// Created by Florian Mahlknecht on 2021-03-01.
+// Created by Florian Mahlknecht on 2021-07-05.
 // Copyright (c) 2021 NASA / JPL. All rights reserved.
-//
 
 #pragma once
 
 #include <x/vio/types.h>
-#include <x/eklt/types.h>
-#include <x/eklt/eklt_tracker.h>
-#include <x/eklt/viewer.h>
 #include <x/eklt/eklt_vio_updater.h>
 #include <x/vio/state_manager.h>
 #include <x/vio/track_manager.h>
@@ -19,14 +15,14 @@
 
 #include <x/common/event_types.h>
 #include <x/vio/abstract_vio.h>
+#include <x/haste/haste_tracker.h>
 
 
 namespace x {
-  class EKLTVIO : public AbstractVio {
+  class HASTEVIO : public AbstractVio {
   public:
-    explicit EKLTVIO(XVioPerformanceLoggerPtr  xvio_perf_logger = nullptr,
-                     EventsPerformanceLoggerPtr events_perf_logger = nullptr,
-                     EkltPerformanceLoggerPtr  eklt_perf_logger = nullptr);
+    explicit HASTEVIO(XVioPerformanceLoggerPtr  xvio_perf_logger = nullptr,
+                     EventsPerformanceLoggerPtr events_perf_logger = nullptr);
 
     bool isInitialized() const;
 
@@ -113,8 +109,7 @@ namespace x {
 
     Camera camera_;
     Tracker tracker_;
-    Viewer eklt_viewer_;
-    EkltTracker eklt_tracker_;
+    HasteTracker haste_tracker_;
     TrackManager track_manager_;
     StateManager state_manager_;
     RangeMeasurement last_range_measurement_;
@@ -128,4 +123,8 @@ namespace x {
     XVioPerformanceLoggerPtr xvio_perf_logger_;
   };
 } // namespace x
+
+
+
+
 
