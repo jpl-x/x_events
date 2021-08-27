@@ -18,14 +18,6 @@ project(x)
 
 set(CMAKE_BUILD_TYPE Release)
 
-# build with catkin build x --cmake-args -DMY_DEBUG=1
-if (MY_DEBUG)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Og")
-endif()
-
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Og -fno-omit-frame-pointer -fsanitize=address") # REMOVE ME LATER
-#set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -g -Og -fno-omit-frame-pointer -fsanitize=address") # REMOVE ME LATER
-
 # Set definitions
 if(DUAL_THREAD)
   add_definitions(-DDUAL_THREAD)
@@ -104,6 +96,15 @@ if (CMAKE_BUILD_TYPE MATCHES Release)
 
 endif()
 
+# build with catkin build x --cmake-args -DMY_DEBUG=1
+if (MY_DEBUG)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Og")
+endif()
+
+## For debugging memory leaks
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Og -fno-omit-frame-pointer -fsanitize=address") # REMOVE ME LATER
+#set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -g -Og -fno-omit-frame-pointer -fsanitize=address") # REMOVE ME LATER
+
 # For downstream packages in catkin
 set(EIGEN3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
 set(EIGEN3_LIBRARIES ${EIGEN3_LIBRARIES})
@@ -126,6 +127,7 @@ include_directories (SYSTEM
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
   ${easy_profiler_catkin_INCLUDE_DIRS}
+  ${glog_catkin_INCLUDE_DIRS}
 )
 
 set (SOURCE

@@ -390,7 +390,26 @@ void Tracker::getFASTFeaturesImage(TiledImage& img,
   double scale_factor = pow(2,(double) pyramid_level);
 
   // Get FAST features
+#define FEATURES_USE_FAST
+#ifdef FEATURES_USE_FAST
   cv::FAST(img, keypoints, fast_detection_delta_, non_max_supp_);
+#endif
+#ifdef FEATURES_USE_HARRIS
+  //TODO(frockenb): Finish implementation and clean up!
+  //This implementation is not finisched and should be pulled threw the whole feature chain.
+  std::vector<cv::Point2d> points;
+  cv::Mat mask = cv::Mat::ones(img.rows, img.cols, CV_8UC1);
+  cv::goodFeaturesToTrack(img, points, 100,
+                          0.2,
+                          margin_, mask,
+                          3,
+                          true,
+                          0.04);
+  for (const auto & point:points) {
+    cv::KeyPoint kp(point, 1);
+    keypoints.push_back(kp);
+  }
+#endif
 
   // Create a blocked mask which is 1 in the neighborhood of old features, and 0
   // elsewhere.

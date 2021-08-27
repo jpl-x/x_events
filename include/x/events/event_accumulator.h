@@ -8,6 +8,7 @@
 #include <x/vio/types.h>
 #include <x/common/event_types.h>
 #include <x/vision/camera.h>
+#include <x/ekf/ekf.h>
 
 namespace x
 {
@@ -16,7 +17,7 @@ class EventAccumulator
 public:
   EventAccumulator();
 
-  EventAccumulator(const size_t buffer_size, const int accumulation_method, const int imag_width, const int image_height);
+  EventAccumulator(const size_t buffer_size, const int accumulation_method, const int imag_width, const int image_height, std::shared_ptr<Ekf> ekf_pointer);
 
   bool storeEventsInBuffer(const x::EventArray::ConstPtr &new_events, const Params& params);
 
@@ -25,6 +26,8 @@ public:
   bool renderTimeSurface(cv::Mat& time_surface_img, double &image_time, const Params& params);
 
 private:
+
+  std::shared_ptr<Ekf> ekf_pointer_;
 
   double buffer_start_time_;
   double buffer_end_time_;
@@ -40,7 +43,7 @@ private:
 
   cv::Mat time_surface_;
 
-  void drawEventFrame(cv::Mat& event_img, Eigen::Matrix4d T_1_0, double t_start, double t_end, const Params& params, const Camera& camera);
+  void drawEventFrame(cv::Mat& event_img, Eigen::Matrix4d T_1_0, double t_start, double t_end, double inv_depth_est, const Params& params, const Camera& camera);
 
 };
 }

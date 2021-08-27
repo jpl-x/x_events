@@ -112,7 +112,7 @@ namespace x {
       /**
        * Extended Kalman filter estimation back end.
        */
-      Ekf ekf_;
+      std::shared_ptr<Ekf> ekf_;
       
       /**
        * VIO EKF updater.
