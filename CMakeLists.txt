@@ -65,6 +65,7 @@ find_package(catkin REQUIRED COMPONENTS
   ${OPENCV_PACKAGE}
   ceres_catkin
   eigen_catkin
+  glog_catkin
 )
 
 find_package(Eigen3 REQUIRED)
@@ -125,6 +126,7 @@ include_directories (SYSTEM
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
   ${easy_profiler_catkin_INCLUDE_DIRS}
+  ${glog_catkin_INCLUDE_DIRS}
 )
 
 set (SOURCE

@@ -12,6 +12,7 @@
   <build_depend>cmake_modules</build_depend>
   <build_depend>easy_profiler_catkin</build_depend>
   <build_depend>ceres_catkin</build_depend>
+  <build_depend>glog_catkin</build_depend>
   <build_depend>eigen_catkin</build_depend>
 
 </package>
