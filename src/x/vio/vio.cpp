@@ -17,6 +17,7 @@
 #include <x/vio/vio.h>
 #include <x/vio/tools.h>
 #include <x/vision/types.h>
+#include <x/vision/utils.h>
 #include <easy/profiler.h>
 
 #include <iostream>
@@ -129,6 +130,10 @@ State VIO::processImageMeasurement(double timestamp,
   // Time correction
   const double timestamp_corrected = timestamp + params_.time_offset;
 
+  if (xvio_perf_logger_ && xvio_perf_logger_->dump_input_frames) {
+    x::dumpFrame(xvio_perf_logger_, timestamp, "input_img", match_img);
+  }
+
   // Pass measurement data to updater
   MatchList empty_list; // TODO(jeff) get rid of image callback and process match
                         // list from a separate tracker module.
@@ -153,6 +158,12 @@ State VIO::processImageMeasurement(double timestamp,
   // Populate GUI image outputs
   match_img = vio_updater_.getMatchImage();
   feature_img = vio_updater_.getFeatureImage();
+
+  if (xvio_perf_logger_ && xvio_perf_logger_->dump_debug_frames) {
+    feature_img = vio_updater_.getFeatureImage();
+    x::dumpFrame(xvio_perf_logger_, timestamp, "feature_img", feature_img);
+    x::dumpFrame(xvio_perf_logger_, timestamp, "tracker_img", match_img);
+  }
 
   return updated_state;
 }

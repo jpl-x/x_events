@@ -42,16 +42,31 @@ namespace x
 {
   using FeaturesCsv = CsvWriter<profiler::timestamp_t, size_t, size_t, size_t, size_t>;
   using TracksCsv = CsvWriter<profiler::timestamp_t, u_int32_t, double, double, double, double, double, std::string>;
+  using DumpedFramesCsv = CsvWriter<profiler::timestamp_t, double, std::string, std::string>;
 
 
   struct XVioPerformanceLogger {
 
-    explicit XVioPerformanceLogger(const fs::path & path)
+    explicit XVioPerformanceLogger(const fs::path & path, bool dump_input_frames = false, bool dump_debug_frames = false)
      : features_csv(path / "features.csv", {"ts", "num_slam_features", "num_msckf_features", "num_opportunistic_features", "num_potential_features"})
-     , tracks_csv(path / "xvio_tracks.csv", {"lost_ts", "id", "t", "x", "y", "x_dist", "y_dist", "update_type"}) {}
+     , tracks_csv(path / "xvio_tracks.csv", {"lost_ts", "id", "t", "x", "y", "x_dist", "y_dist", "update_type"})
+     , dumped_frames_csv(path / "dumped_frames.csv", {"ts", "t", "type", "filename"})
+     , dump_input_frames(dump_input_frames)
+     , dump_debug_frames(dump_debug_frames)
+     , frames_path(path / "frames/"){
+      if (dump_input_frames || dump_debug_frames) {
+        if (!exists(frames_path)) {
+          create_directories(frames_path);
+        }
+      }
+    }
 
     FeaturesCsv features_csv;
     TracksCsv tracks_csv;
+    DumpedFramesCsv dumped_frames_csv;
+    bool dump_input_frames;
+    bool dump_debug_frames;
+    fs::path frames_path;
   };
 
   typedef std::shared_ptr<XVioPerformanceLogger> XVioPerformanceLoggerPtr;

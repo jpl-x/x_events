@@ -6,6 +6,7 @@
 #include <x/eklt/eklt_vio.h>
 #include <x/vio/tools.h>
 #include <x/vision/types.h>
+#include <x/vision/utils.h>
 
 #include <x/eklt/eklt_tracker.h>
 
@@ -114,10 +115,13 @@ State EKLTVIO::processImageMeasurement(double timestamp,
   // Time correction
   const double timestamp_corrected = timestamp + params_.time_offset;
 
-  // Track features
+  if (xvio_perf_logger_ && xvio_perf_logger_->dump_input_frames) {
+    x::dumpFrame(xvio_perf_logger_, timestamp, "input_img", match_img);
+  }
+
+  // Extract features
   auto match_image_tracker_copy = match_img.clone();
   eklt_tracker_.processImage(timestamp_corrected, match_image_tracker_copy);
-  //  tracker_.track(match_image_tracker_copy, timestamp_corrected, seq);
 
   // EKLT does not provide an update from images
   return State();
@@ -187,6 +191,13 @@ State EKLTVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_pt
     // Process update measurement with xEKF
     most_recent_state = ekf_.processUpdateMeasurement();
     most_recent_timestamp = timestamp;
+
+    if (xvio_perf_logger_ && xvio_perf_logger_->dump_debug_frames) {
+      eklt_tracker_.renderVisualization(tracker_img);
+      feature_img = vio_updater_.getFeatureImage();
+      x::dumpFrame(xvio_perf_logger_, most_recent_timestamp, "feature_img", feature_img);
+      x::dumpFrame(xvio_perf_logger_, most_recent_timestamp, "tracker_img", tracker_img);
+    }
   }
 
   if(most_recent_state.getTime() != kInvalid) {

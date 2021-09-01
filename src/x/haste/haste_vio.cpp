@@ -9,6 +9,7 @@
 
 #include <x/vio/tools.h>
 #include <x/vision/types.h>
+#include <x/vision/utils.h>
 
 #include <iostream>
 
@@ -114,6 +115,10 @@ State HASTEVIO::processImageMeasurement(double timestamp,
   // Time correction
   const double timestamp_corrected = timestamp + params_.time_offset;
 
+  if (xvio_perf_logger_ && xvio_perf_logger_->dump_input_frames) {
+    x::dumpFrame(xvio_perf_logger_, timestamp, "input_img", match_img);
+  }
+
   // Track features
   auto match_image_tracker_copy = match_img.clone();
   haste_tracker_.processImage(timestamp_corrected, match_image_tracker_copy);
@@ -187,6 +192,11 @@ State HASTEVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_p
     // Process update measurement with xEKF
     most_recent_state = ekf_.processUpdateMeasurement();
     most_recent_timestamp = timestamp;
+
+    if (xvio_perf_logger_ && xvio_perf_logger_->dump_debug_frames) {
+      feature_img = vio_updater_.getFeatureImage();
+      x::dumpFrame(xvio_perf_logger_, most_recent_timestamp, "feature_img", feature_img);
+    }
   }
 
   if(most_recent_state.getTime() != kInvalid) {
