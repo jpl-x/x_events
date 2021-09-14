@@ -19,8 +19,8 @@ namespace x {
 
   class AsyncFeatureInterpolator {
   public:
-    AsyncFeatureInterpolator(x::AsyncFrontendParams params, x::Camera  cam)
-    : camera_(std::move(cam)), params_(params) {}
+    AsyncFeatureInterpolator(x::AsyncFrontendParams params, x::Camera  cam, EventsPerformanceLoggerPtr event_perf_logger)
+    : camera_(std::move(cam)), params_(params), event_perf_logger_(std::move(event_perf_logger)) {}
 
     Feature interpolatePatchToTime(const AsyncPatch* patch, double t);
 
@@ -38,6 +38,7 @@ namespace x {
   private:
     x::Camera camera_;
     x::AsyncFrontendParams params_;
+    EventsPerformanceLoggerPtr event_perf_logger_;
     std::map<int, x::Feature> previous_features_;
     /**
      * Minimum time gap between consecutive interpolation timestamps (ensures monotonically increasing update timestamps)

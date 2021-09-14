@@ -37,16 +37,19 @@ namespace x {
 
   using EventsCsv = CsvWriter<profiler::timestamp_t, profiler::timestamp_t>;
   using OptimizationsCsv = CsvWriter<profiler::timestamp_t, profiler::timestamp_t, int, double>;
+  using EventTracksInterpolation = CsvWriter<int, double, double, double>;
   using EventTracksCSV = CsvWriter<int, double, double, double>;
   using EKLTTracksCSV = CsvWriter<profiler::timestamp_t, int, EkltTrackUpdateType, double, double, double, double>;
 
   struct EventsPerformanceLogger {
     explicit EventsPerformanceLogger(const fs::path & path)
       : events_csv(path / "events.csv", {"ts_start", "ts_stop"})
-      , event_tracks_csv(path / "event_tracks.csv", {"id", "t", "center_x", "center_y"}) {}
+      , event_tracks_csv(path / "event_tracks.csv", {"id", "t", "center_x", "center_y"})
+      , event_tracks_interpolation_csv(path / "event_tracks_interpolation.csv", {"id", "interpolated_t", "interpolated_x_dist", "interpolated_y_dist"}) {}
 
     EventsCsv events_csv;
     EventTracksCSV event_tracks_csv;
+    EventTracksInterpolation  event_tracks_interpolation_csv;
   };
 
   typedef std::shared_ptr<EventsPerformanceLogger> EventsPerformanceLoggerPtr;

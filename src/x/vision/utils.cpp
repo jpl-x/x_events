@@ -11,6 +11,8 @@
 
 std::vector<uchar> x::detectOutliers(const std::vector<cv::Point2f> &pts1, const std::vector<cv::Point2f> &pts2,
                                      int outlier_method_, double outlier_param1_, double outlier_param2_) {
+
+  EASY_BLOCK("RANSAC outlier removal", profiler::colors::Red);
   std::vector<uchar> mask;
   cv::findFundamentalMat(pts1,
                          pts2,

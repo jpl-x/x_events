@@ -53,7 +53,7 @@ namespace x
      , dumped_frames_csv(path / "dumped_frames.csv", {"ts", "t", "type", "filename"})
      , dump_input_frames(dump_input_frames)
      , dump_debug_frames(dump_debug_frames)
-     , frames_path(path / "frames/"){
+     , frames_path(path / "frames/") {
       if (dump_input_frames || dump_debug_frames) {
         if (!exists(frames_path)) {
           create_directories(frames_path);

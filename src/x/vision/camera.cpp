@@ -86,7 +86,7 @@ double Camera::getCyN() const
 }
 
 void Camera::undistort(const cv::Point2d &input, cv::Point2d &undistorted_output) const {
-  EASY_FUNCTION();
+//  EASY_FUNCTION();
 
   // change to centered normalized pixel coordinates
   double px[2];
@@ -134,7 +134,7 @@ Feature Camera::normalize(const Feature& feature) const
       feature.getX() * inv_fx_ - cx_n_,
       feature.getY() * inv_fy_ - cy_n_);
   normalized_feature.setXDist(feature.getXDist() * inv_fx_ - cx_n_);
-  normalized_feature.setYDist(feature.getYDist() * inv_fx_ - cx_n_);
+  normalized_feature.setYDist(feature.getYDist() * inv_fy_ - cx_n_);
 
   return normalized_feature;
 }

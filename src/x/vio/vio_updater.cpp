@@ -71,6 +71,7 @@ void VioUpdater::preProcess(const State& state) {
   // If the length of matches_ is 0, that means we used the image constructor
   // for the current object and the tracker needs to be run
   if (measurement_.matches.size() == 0) {
+    EASY_BLOCK("XVIO frontend", profiler::colors::Green);
     // Track features
     match_img_ = measurement_.image.clone();
     tracker_.track(match_img_, measurement_.timestamp, measurement_.seq);

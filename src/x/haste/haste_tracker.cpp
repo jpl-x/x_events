@@ -33,7 +33,6 @@ void HasteTracker::initPatches(HastePatches &patches, std::vector<int> &lost_ind
   for (const auto & feature : features) {
     patches.emplace_back(feature, image_it->first, params_, event_perf_logger_);
     patches.back().hypothesis_tracker_ = createHypothesisTracker(image_it->first, feature.x, feature.y, 0);
-
   }
 
   // fill up patches to full capacity and set all of the filled patches to lost

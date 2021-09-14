@@ -18,7 +18,7 @@ using namespace x;
 
 x::AsyncFeatureTracker::AsyncFeatureTracker(Camera camera, AsyncFrontendParams async_frontend_params, EventsPerformanceLoggerPtr event_perf_logger)
   : got_first_image_(false)
-  , interpolator_(async_frontend_params, std::move(camera))
+  , interpolator_(async_frontend_params, std::move(camera), event_perf_logger)
   , most_current_time_(-1.0)
   , params_(async_frontend_params)
   , event_perf_logger_(std::move(event_perf_logger)) {
@@ -102,7 +102,7 @@ std::vector<x::MatchList> x::AsyncFeatureTracker::processEvents(const EventArray
   double last_event_ts = -1;
   for (const auto &ev : msg->events) {
     last_event_ts = ev.ts;
-    EASY_EVENT("Single Event");
+//    EASY_EVENT("Single Event");
     EventPerfHelper helper(event_perf_logger_);
     // keep track of the most current time with latest time stamp from event
     if (ev.ts >= most_current_time_)

@@ -35,7 +35,7 @@ class HypothesisPatchTracker {
   using Orientation = typename Hypothesis::Orientation;
   using Weight = Scalar;
 
-  static constexpr Scalar kTextureFactor = 0.2;
+  static constexpr Scalar kTextureFactor = 0.1;
   static constexpr Scalar kTemplateUpdateFactor = 0.1;
   static constexpr size_t kPatchSize = 31;
   static_assert(kPatchSize % 2 == 1, "Patch kSize parameter must be an odd");

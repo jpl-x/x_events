@@ -22,10 +22,15 @@ void Updater::update(State& state) {
   // Image pre-processing
   preProcess(state);
 
+  EASY_BLOCK("Backend feature management", profiler::colors::Red);
+
   // Pre-update work and check if update is needed
   const bool update_requested = preUpdate(state);
+
+  EASY_END_BLOCK;
   
   if (update_requested) {
+    EASY_BLOCK("Backend EKF Update", profiler::colors::Red);
     // Initialize correction vector 
     Matrix correction = Matrix::Zero(state.nErrorStates(), 1);
 
@@ -40,8 +45,14 @@ void Updater::update(State& state) {
       applyUpdate(state, h, res, r, correction, is_last_iter);
     }
 
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("Backend feature management", profiler::colors::Red);
+
     // Post update: feature initialization
     postUpdate(state, correction);
+
+    EASY_END_BLOCK;
   }
 }
 

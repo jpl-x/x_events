@@ -343,6 +343,7 @@ void Tracker::featureDetection(const TiledImage& img,
                                unsigned int frame_number,
                                FeatureList& old_feature_list)
 {
+  EASY_BLOCK("XVIO feature detection", profiler::colors::Green);
   // Pyramidal OpenCV FAST
   ImagePyramid pyr;
   getImagePyramid(img, pyr);
@@ -602,6 +603,7 @@ void Tracker::featureTracking(const cv::Mat& img1,
                               const double timestamp2,
                               const unsigned int frame_number2) const
 {
+  EASY_BLOCK("XVIO feature tracking", profiler::colors::Green);
   // Convert features to OpenCV keypoints
   //TODO(jeff) Store coordinates as cv::Point2f in Feature class to avoid
   // theses conversions

@@ -79,12 +79,12 @@ namespace x {
     }
 
     void addRow(const Types &... values) {
-      EASY_BLOCK("CSV addRow");
+//      EASY_BLOCK("CSV addRow");
       buffer_.emplace(values...);
     }
 
     void addRow(Types &&... values) {
-      EASY_BLOCK("CSV addRow");
+//      EASY_BLOCK("CSV addRow");
       buffer_.emplace(values...);
     }
 

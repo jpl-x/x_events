@@ -110,7 +110,7 @@ x::Feature x::AsyncFeatureInterpolator::createUndistortedFeature(double t, doubl
 x::MatchList x::AsyncFeatureInterpolator::getMatchListFromPatches(const std::vector<AsyncPatch *>& active_patches,
                                                                   std::vector<AsyncPatch *>& detected_outliers,
                                                                   double latest_event_ts) {
-  EASY_FUNCTION();
+//  EASY_FUNCTION();
 
   double interpolation_time = getInterpolationTime(active_patches, latest_event_ts);
 
@@ -124,6 +124,7 @@ x::MatchList x::AsyncFeatureInterpolator::getMatchListFromPatches(const std::vec
 
   for (auto& p : active_patches) {
     auto new_pos = interpolatePatchToTime(p, interpolation_time);
+    event_perf_logger_->event_tracks_interpolation_csv.addRow(p->getId(), interpolation_time, new_pos.getXDist(), new_pos.getYDist());
 
     Match m;
     m.current = new_pos;

@@ -70,7 +70,7 @@ void Optimizer::precomputeLogImageArray(const EkltPatches &patches, const ImageB
 
 void Optimizer::optimizeParameters(const cv::Mat &event_frame, EkltPatch &patch, double t) {
   auto start = profiler::now();
-  EASY_FUNCTION();
+//  EASY_FUNCTION();
 
   ceres::Problem problem(prob_options);
   ceres::Solver::Summary summary;

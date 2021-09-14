@@ -77,6 +77,9 @@ State Ekf::processImu(const double timestamp,
                       const unsigned int seq,
                       const Vector3& w_m,
                       const Vector3& a_m) {
+
+  EASY_BLOCK("EKF IMU Update", profiler::colors::Red);
+
   // Seq ID for last IMU message
   static unsigned int last_seq = 0;
 

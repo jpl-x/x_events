@@ -119,6 +119,8 @@ State HASTEVIO::processImageMeasurement(double timestamp,
     x::dumpFrame(xvio_perf_logger_, timestamp, "input_img", match_img);
   }
 
+  EASY_BLOCK("HASTE Corner Extraction", profiler::colors::Green);
+
   // Track features
   auto match_image_tracker_copy = match_img.clone();
   haste_tracker_.processImage(timestamp_corrected, match_image_tracker_copy);
@@ -165,11 +167,18 @@ State HASTEVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_p
 //  std::cout << "Events at timestamps [" << std::setprecision(17) << events_ptr->events.front().ts << ", " << events_ptr->events.back().ts
 //            << "] received in xHASTEVIO class." << std::endl;
 
+  EASY_BLOCK("HASTE Tracking", profiler::colors::Green);
+
   auto match_lists_for_ekf_updates = haste_tracker_.processEvents(events_ptr);
+
+  EASY_END_BLOCK;
 
   auto most_recent_state = State();
 
   double most_recent_timestamp = -1.0;
+
+
+  EASY_BLOCK("HASTE EKF Vision Updates", profiler::colors::Red);
 
   for (const auto& matches : match_lists_for_ekf_updates) {
     if (matches.empty())
@@ -198,6 +207,8 @@ State HASTEVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_p
       x::dumpFrame(xvio_perf_logger_, most_recent_timestamp, "feature_img", feature_img);
     }
   }
+
+  EASY_END_BLOCK;
 
   if(most_recent_state.getTime() != kInvalid) {
     most_recent_state.setTime(most_recent_timestamp);

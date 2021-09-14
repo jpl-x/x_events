@@ -119,6 +119,7 @@ State EKLTVIO::processImageMeasurement(double timestamp,
     x::dumpFrame(xvio_perf_logger_, timestamp, "input_img", match_img);
   }
 
+  EASY_BLOCK("EKLT Corner Extraction", profiler::colors::Green);
   // Extract features
   auto match_image_tracker_copy = match_img.clone();
   eklt_tracker_.processImage(timestamp_corrected, match_image_tracker_copy);
@@ -164,11 +165,17 @@ State EKLTVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_pt
 //  std::cout << "Events at timestamps [" << std::setprecision(17) << events_ptr->events.front().ts << ", "
 //            << events_ptr->events.back().ts << "] received in xEKLTVIO class." << std::endl;
 
+  EASY_BLOCK("EKLT Tracking", profiler::colors::Green);
+
   auto match_lists_for_ekf_updates = eklt_tracker_.processEvents(events_ptr);
+
+  EASY_END_BLOCK;
 
   auto most_recent_state = State();
 
   double most_recent_timestamp = -1.0;
+
+  EASY_BLOCK("EKLT EKF Vision Updates", profiler::colors::Red);
 
   for (const auto& matches : match_lists_for_ekf_updates) {
     if (matches.empty())
@@ -199,6 +206,8 @@ State EKLTVIO::processEventsMeasurement(const x::EventArray::ConstPtr &events_pt
       x::dumpFrame(xvio_perf_logger_, most_recent_timestamp, "tracker_img", tracker_img);
     }
   }
+
+  EASY_END_BLOCK;
 
   if(most_recent_state.getTime() != kInvalid) {
     most_recent_state.setTime(most_recent_timestamp);
