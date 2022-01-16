@@ -53,7 +53,7 @@ namespace x {
       /**
        * Minimum constructor.
        */
-      Ekf(Updater& updater);
+      explicit Ekf(Updater& updater, XVioPerformanceLoggerPtr xvio_perf_logger = nullptr);
 
       /**
        * Copy constructor
@@ -166,6 +166,11 @@ namespace x {
        * that is specific to a measurement type (e.g. VioUpdater)
        */
       Updater& updater_;
+
+      /**
+       * Performance logger pointer to log measurement update times (can be null)
+       */
+      XVioPerformanceLoggerPtr xvio_perf_logger_;
       
       /**
        * Time-sorted ring state buffer.

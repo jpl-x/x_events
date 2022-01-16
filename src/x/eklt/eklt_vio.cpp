@@ -27,7 +27,7 @@ namespace boost {
 
 
 EKLTVIO::EKLTVIO(XVioPerformanceLoggerPtr xvio_perf_logger, EventsPerformanceLoggerPtr events_perf_logger,  EkltPerformanceLoggerPtr eklt_perf_logger)
-  : ekf_{Ekf(vio_updater_)}
+  : ekf_{Ekf(vio_updater_, xvio_perf_logger)}
   , msckf_baseline_n_(-1.0)
   , eklt_viewer_()
   , eklt_tracker_(x::Camera(), eklt_viewer_, x::Params(), std::move(events_perf_logger), std::move(eklt_perf_logger))

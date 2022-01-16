@@ -16,16 +16,19 @@
 
 #include <x/ekf/ekf.h>
 #include <iostream>
+#include <utility>
 
 using namespace x;
 
-Ekf::Ekf(Updater& updater)
+Ekf::Ekf(Updater& updater, XVioPerformanceLoggerPtr xvio_perf_logger)
   : updater_ { updater }
+  , xvio_perf_logger_(std::move(xvio_perf_logger))
 {}
 
 Ekf::Ekf(const Ekf& ekf)
   : propagator_ { ekf.propagator_ }
   , updater_ { ekf.updater_ }
+  , xvio_perf_logger_{ ekf.xvio_perf_logger_ }
   , state_buffer_ { ekf.state_buffer_ }
 {}
 
@@ -174,10 +177,13 @@ State Ekf::processUpdateMeasurement() {
   unlock();
 
   // Check if update was applied (can fail if buffer was overwritten)
-  if (update_success) 
+  if (update_success) {
+    if (xvio_perf_logger_)
+      xvio_perf_logger_->ekf_updates_csv.addRow(profiler::currentTime(), update_state.getTime());
     return update_state;
-  else
+  } else {
     return State();
+  }
 }
 
 void Ekf::lock() {

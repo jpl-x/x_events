@@ -43,6 +43,7 @@ namespace x
   using FeaturesCsv = CsvWriter<profiler::timestamp_t, size_t, size_t, size_t, size_t>;
   using TracksCsv = CsvWriter<profiler::timestamp_t, u_int32_t, double, double, double, double, double, std::string>;
   using DumpedFramesCsv = CsvWriter<profiler::timestamp_t, double, std::string, std::string>;
+  using EkfUpdatesCsv = CsvWriter<profiler::timestamp_t, double>;
 
 
   struct XVioPerformanceLogger {
@@ -51,6 +52,7 @@ namespace x
      : features_csv(path / "features.csv", {"ts", "num_slam_features", "num_msckf_features", "num_opportunistic_features", "num_potential_features"})
      , tracks_csv(path / "xvio_tracks.csv", {"lost_ts", "id", "t", "x", "y", "x_dist", "y_dist", "update_type"})
      , dumped_frames_csv(path / "dumped_frames.csv", {"ts", "t", "type", "filename"})
+     , ekf_updates_csv(path / "ekf_updates.csv", {"ts", "t"})
      , dump_input_frames(dump_input_frames)
      , dump_debug_frames(dump_debug_frames)
      , frames_path(path / "frames/") {
@@ -64,6 +66,7 @@ namespace x
     FeaturesCsv features_csv;
     TracksCsv tracks_csv;
     DumpedFramesCsv dumped_frames_csv;
+    EkfUpdatesCsv ekf_updates_csv;
     bool dump_input_frames;
     bool dump_debug_frames;
     fs::path frames_path;
